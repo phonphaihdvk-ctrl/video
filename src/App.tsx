@@ -14,6 +14,10 @@ import {
   UploadProgressInfo,
   UploadController,
   auth,
+  signInWithGIS,
+  getGoogleClientId,
+  getGoogleApiKey,
+  setGoogleApiConfig,
 } from './utils/googleDrive';
 import { User } from 'firebase/auth';
 
@@ -125,6 +129,16 @@ export const TRANSLATIONS = {
     selectTargetFolderDesc: 'Choose which folder to save this file into before uploading.',
     confirmAndUpload: 'Confirm & Upload',
     enterNewFolderName: 'Or create new folder name',
+    devApiConfig: 'Developer / API Configuration',
+    devApiConfigDesc: 'Configure Google Client ID & API Key for standalone Netlify deployment.',
+    googleClientIdLabel: 'Google OAuth Client ID',
+    googleApiKeyLabel: 'Google Drive API Key',
+    saveCredentials: 'Save Credentials',
+    credentialsSaved: 'Credentials saved successfully!',
+    demoGuestMode: 'One-Click Demo Guest',
+    demoGuestDesc: 'Instant access with demo videos and photos',
+    popoutDrive: 'Pop-out Full Window',
+    connectedDriveStorage: 'Connected: phonphaihdvk@gmail.com • 5 TB Google Drive Storage',
   },
   km: {
     appName: 'HD Media Vault',
@@ -231,6 +245,16 @@ export const TRANSLATIONS = {
     selectTargetFolderDesc: 'ជ្រើសរើសថតដែលត្រូវរក្សាទុកឯកសារនេះ មុនពេលចាប់ផ្ដើមផ្ទុកឡើង។',
     confirmAndUpload: 'បញ្ជាក់ & ផ្ទុកឡើង',
     enterNewFolderName: 'ឬបង្កើតឈ្មោះថតថ្មី',
+    devApiConfig: 'ការកំណត់អ្នកអភិវឌ្ឍន៍ / Google API',
+    devApiConfigDesc: 'កំណត់ Google Client ID & API Key សម្រាប់ដាក់ឱ្យដំណើរការនៅលើ Netlify។',
+    googleClientIdLabel: 'Google OAuth Client ID',
+    googleApiKeyLabel: 'Google Drive API Key',
+    saveCredentials: 'រក្សាទុកព័ត៌មានសម្ងាត់',
+    credentialsSaved: 'បានរក្សាទុកព័ត៌មានសម្ងាត់ដោយជោគជ័យ!',
+    demoGuestMode: 'ចូលសាកល្បងភ្លាមៗ (Demo Guest)',
+    demoGuestDesc: 'ចូលទស្សនាភ្លាមៗជាមួយវីដេអូ និងរូបថតគំរូ',
+    popoutDrive: 'បើកផ្ទាំងពេញក្នុង Google Drive',
+    connectedDriveStorage: 'បានភ្ជាប់៖ phonphaihdvk@gmail.com • ទំហំផ្ទុក 5 TB Google Drive',
   },
 };
 
@@ -547,6 +571,12 @@ export default function App() {
 
   // Dedicated Developer Admin Panel Modal State
   const [showDevAdminModal, setShowDevAdminModal] = useState(false);
+
+  // Developer Google OAuth / API Configuration Modal States (for Netlify & Custom Domains)
+  const [showApiConfigModal, setShowApiConfigModal] = useState(false);
+  const [customClientIdInput, setCustomClientIdInput] = useState(() => getGoogleClientId());
+  const [customApiKeyInput, setCustomApiKeyInput] = useState(() => getGoogleApiKey());
+  const [apiConfigSuccess, setApiConfigSuccess] = useState('');
 
   // Dynamic Video Aspect Ratio & Real Resolution States
   const [videoDimensions, setVideoDimensions] = useState<{
@@ -1017,10 +1047,73 @@ export default function App() {
     setTimeout(() => setStatusMessage(''), 4000);
   };
 
-  // Google Sign In handler
+  const handleSaveApiConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    setGoogleApiConfig(customClientIdInput, customApiKeyInput);
+    setApiConfigSuccess(t.credentialsSaved || 'Credentials saved successfully!');
+    setTimeout(() => {
+      setApiConfigSuccess('');
+      setShowApiConfigModal(false);
+    }, 1200);
+  };
+
+  // Google Sign In handler (supports GIS Token Client & Firebase Popup fallback)
   const handleGoogleSignIn = async (forceConsent = true) => {
     setLoading(true);
     setStatusMessage(t.syncingDrive);
+    setLoginError('');
+
+    const clientId = getGoogleClientId();
+
+    // 1. If custom Client ID is configured or GIS SDK is available with client ID, use GIS token client
+    if (clientId && typeof window !== 'undefined' && (window as any).google?.accounts?.oauth2) {
+      try {
+        const gisResult = await signInWithGIS();
+        if (gisResult) {
+          const email = gisResult.profile.email;
+          setUserEmail(email);
+          setAccessToken(gisResult.accessToken);
+          setIsAuthenticated(true);
+          localStorage.setItem('vault_auth_active', 'true');
+          localStorage.setItem('vault_user_email', email);
+
+          if (gisResult.profile.picture) {
+            setUserAvatar(gisResult.profile.picture);
+            localStorage.setItem('vault_user_avatar', gisResult.profile.picture);
+          }
+
+          // Register in user list
+          const currentEmail = email.toLowerCase();
+          setVaultUsers((prev) => {
+            const exists = prev.some((u) => u.email.toLowerCase() === currentEmail);
+            if (!exists) {
+              const isDev = currentEmail === DEVELOPER_ADMIN_EMAIL.toLowerCase();
+              return [
+                ...prev,
+                {
+                  email: email,
+                  name: gisResult.profile.name || 'Google User',
+                  status: isDev ? 'approved' : 'pending',
+                  role: isDev ? 'admin' : 'user',
+                  date: 'Just now',
+                },
+              ];
+            }
+            return prev;
+          });
+
+          await loadDriveVideos(gisResult.accessToken, email);
+          setStatusMessage(t.cloudConnected);
+          setTimeout(() => setStatusMessage(''), 4000);
+          setLoading(false);
+          return;
+        }
+      } catch (gisErr: any) {
+        console.warn('GIS sign in notice:', gisErr);
+      }
+    }
+
+    // 2. Firebase Google Sign-In Fallback (or if no custom client ID set yet)
     try {
       const result = await googleSignIn(forceConsent);
       if (result) {
@@ -1031,7 +1124,6 @@ export default function App() {
         localStorage.setItem('vault_auth_active', 'true');
         localStorage.setItem('vault_user_email', result.user.email || '');
 
-        // Auto-register in user approval list if not present
         const currentEmail = (result.user.email || '').toLowerCase();
         setVaultUsers((prev) => {
           const exists = prev.some((u) => u.email.toLowerCase() === currentEmail);
@@ -1056,8 +1148,15 @@ export default function App() {
         setTimeout(() => setStatusMessage(''), 4000);
       }
     } catch (err: any) {
-      setLoginError('Google Sign-in was cancelled or encountered an error.');
-      setTimeout(() => setLoginError(''), 5000);
+      if (err?.code === 'auth/popup-closed-by-user') {
+        // user closed popup
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        setShowApiConfigModal(true);
+        setLoginError('Domain unauthorized for Firebase. Please configure your Google Client ID below for direct Google OAuth.');
+      } else {
+        setLoginError('Google Sign-in was cancelled or encountered an error.');
+        setTimeout(() => setLoginError(''), 5000);
+      }
     } finally {
       setLoading(false);
     }
@@ -2106,35 +2205,53 @@ export default function App() {
               </button>
             </form>
 
-            {/* Active Camera QR Scanner & Demo Mode Buttons */}
-            <div className="pt-2 border-t border-slate-800/60 grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCameraQRScanner(true);
-                  startCameraScan();
-                }}
-                className="py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span>{t.qrLogin}</span>
-              </button>
+            {/* Active Camera QR Scanner, One-Click Demo Guest, & Developer API Config */}
+            <div className="pt-2 border-t border-slate-800/60 space-y-2 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCameraQRScanner(true);
+                    startCameraScan();
+                  }}
+                  className="py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>{t.qrLogin}</span>
+                </button>
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAuthenticated(true);
+                    setUserEmail('guest.explorer@gmail.com');
+                    localStorage.setItem('vault_auth_active', 'true');
+                    localStorage.setItem('vault_user_email', 'guest.explorer@gmail.com');
+                    setStatusMessage(lang === 'km' ? 'បានចូលប្រើជាភ្ញៀវសាកល្បង (Guest Demo Mode) ដោយជោគជ័យ។' : 'Signed in as Demo Guest with full vault access.');
+                    setTimeout(() => setStatusMessage(''), 4000);
+                  }}
+                  className="py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <svg className="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span>{t.demoGuestMode}</span>
+                </button>
+              </div>
+
+              {/* Developer / API Configuration for Netlify & Google OAuth */}
               <button
                 type="button"
-                onClick={() => {
-                  setIsAuthenticated(true);
-                  setUserEmail('guest.demo@gmail.com');
-                  setStatusMessage('Exploring Demo Vault in Offline Mode.');
-                  setTimeout(() => setStatusMessage(''), 4000);
-                }}
-                className="py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+                onClick={() => setShowApiConfigModal(true)}
+                className="w-full py-2 px-3 rounded-xl border border-dashed border-slate-700/80 hover:border-amber-400/60 bg-slate-800/40 hover:bg-slate-800 text-[11px] text-slate-300 hover:text-amber-300 font-medium transition cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <span>Offline Demo</span>
-                <span>›</span>
+                <svg className="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                <span>{t.devApiConfig} (Google OAuth & Netlify)</span>
               </button>
             </div>
           </div>
@@ -3166,24 +3283,44 @@ export default function App() {
       {/* Clean Minimalist Video Player Modal (Google Drive Pure Native Embed Player) */}
       {playVideo && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md animate-in fade-in duration-200 p-2 sm:p-4"
+          className="fixed inset-0 z-50 bg-black flex flex-col animate-in fade-in duration-200"
           onClick={() => setPlayVideo(null)}
         >
+          {/* Top Bar: Minimalist header with video title, Pop-out Full Window button (↗), and Close button (✕) */}
           <div
-            className="relative flex flex-col bg-slate-900 text-white w-full max-w-5xl rounded-xl border border-slate-800 shadow-2xl overflow-hidden"
+            className="flex items-center justify-between px-4 py-2.5 sm:py-3 bg-slate-950/95 border-b border-slate-800 shrink-0 z-20"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Bar: ONLY Video Title and Close Button (✕) */}
-            <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0">
-              <div className="truncate max-w-[85%] sm:max-w-[90%]">
-                <h3 className="text-xs sm:text-sm font-semibold truncate text-white drop-shadow">
-                  {playVideo.name}
-                </h3>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {playVideo.size} • {playVideo.category || 'General'}
-                </span>
-              </div>
+            <div className="truncate max-w-[70%] sm:max-w-[80%]">
+              <h3 className="text-xs sm:text-sm font-semibold truncate text-white drop-shadow">
+                {playVideo.name}
+              </h3>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {playVideo.size} • {playVideo.category || 'General'}
+              </span>
+            </div>
 
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Pop-out Full Window button (↗) linking to Google Drive view */}
+              <a
+                href={
+                  playVideo.driveId || (!playVideo.id.startsWith('demo_') && !playVideo.id.startsWith('local_'))
+                    ? `https://drive.google.com/file/d/${playVideo.driveId || playVideo.id}/view`
+                    : playVideo.url
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-mono transition cursor-pointer"
+                title={lang === 'km' ? 'បើកផ្ទាំងពេញក្នុង Google Drive (↗)' : 'Pop-out Full Window (↗)'}
+                aria-label="Pop-out Full Window"
+              >
+                <span className="hidden sm:inline text-[11px]">Drive</span>
+                <svg className="w-3.5 h-3.5 fill-none stroke-currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+
+              {/* Close button (✕) */}
               <button
                 type="button"
                 onClick={() => setPlayVideo(null)}
@@ -3196,27 +3333,30 @@ export default function App() {
                 </svg>
               </button>
             </div>
+          </div>
 
-            {/* Full-size clean Google Drive embed iframe */}
-            <div className="w-full bg-black flex items-center justify-center">
-              {playVideo.id.startsWith('demo_') || playVideo.id.startsWith('local_') ? (
-                <video
-                  src={playVideo.url}
-                  controls
-                  autoPlay
-                  playsInline
-                  className="w-full h-[70vh] sm:h-[80vh] object-contain bg-black rounded-b-xl"
-                />
-              ) : (
-                <iframe
-                  src={`https://drive.google.com/file/d/${playVideo.driveId || playVideo.id}/preview`}
-                  className="w-full h-[70vh] sm:h-[80vh] border-0 rounded-b-xl bg-black"
-                  allow="autoplay; fullscreen"
-                  allowFullScreen
-                  title={playVideo.name}
-                />
-              )}
-            </div>
+          {/* Full viewport size Google Drive Native Embed iframe (zero padding, native controls fully unclipped) */}
+          <div
+            className="flex-1 w-full h-full bg-black relative flex items-center justify-center overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {playVideo.id.startsWith('demo_') || playVideo.id.startsWith('local_') ? (
+              <video
+                src={playVideo.url}
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-contain bg-black"
+              />
+            ) : (
+              <iframe
+                src={`https://drive.google.com/file/d/${playVideo.driveId || playVideo.id}/preview`}
+                className="w-full h-full border-0 bg-black"
+                allow="autoplay; fullscreen"
+                allowFullScreen
+                title={playVideo.name}
+              />
+            )}
           </div>
         </div>
       )}
@@ -4730,6 +4870,24 @@ export default function App() {
                 </button>
               )}
 
+              {/* Developer / API Configuration Button in Drawer */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenu(false);
+                  setShowApiConfigModal(true);
+                }}
+                className="w-full p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-left flex items-center justify-between text-xs transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                  <span className="font-semibold text-slate-200">{t.devApiConfig}</span>
+                </div>
+                <span className="text-slate-400 font-bold">›</span>
+              </button>
+
               {/* 10 Vibrant Accent Colors */}
               <div>
                 <p className="text-xs text-slate-400 mb-2 font-medium uppercase tracking-wide flex justify-between">
@@ -4892,6 +5050,113 @@ export default function App() {
                 </svg>
                 <span>{t.signOut}</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DEVELOPER / GOOGLE API CONFIGURATION MODAL (For Netlify & Standalone Deployments) */}
+      {showApiConfigModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setShowApiConfigModal(false)}
+        >
+          <div
+            className="neon-running-border max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="neon-running-inner bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 text-white space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">{t.devApiConfig}</h3>
+                    <p className="text-[10px] text-slate-400">Netlify Deployment & Google OAuth 2.0</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowApiConfigModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-full bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {t.devApiConfigDesc}
+              </p>
+
+              <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-1.5 text-[11px] text-slate-300">
+                <div className="flex items-center gap-1.5 text-sky-400 font-semibold">
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Google Cloud Console Setup:</span>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Add your Netlify domain (e.g. <span className="text-white font-mono font-bold">https://your-site.netlify.app</span>) under <span className="text-slate-200">Authorized JavaScript Origins</span> in Google Cloud Console Credentials.
+                </p>
+              </div>
+
+              {apiConfigSuccess && (
+                <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold text-center animate-in fade-in">
+                  ✓ {apiConfigSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleSaveApiConfig} className="space-y-3.5">
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">
+                    {t.googleClientIdLabel} <span className="text-amber-400 font-mono">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customClientIdInput}
+                    onChange={(e) => setCustomClientIdInput(e.target.value)}
+                    placeholder="e.g. 739079755169-xxxx.apps.googleusercontent.com"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-mono text-white focus:outline-hidden focus:border-amber-400 placeholder-slate-500"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Saved in browser localStorage (fallback to VITE_GOOGLE_CLIENT_ID).
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">
+                    {t.googleApiKeyLabel} <span className="text-slate-500 font-mono text-[10px]">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customApiKeyInput}
+                    onChange={(e) => setCustomApiKeyInput(e.target.value)}
+                    placeholder="e.g. AIzaSy..."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-mono text-white focus:outline-hidden focus:border-amber-400 placeholder-slate-500"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowApiConfigModal(false)}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition cursor-pointer"
+                  >
+                    {t.cancel}
+                  </button>
+                  <button
+                    type="submit"
+                    style={{ backgroundColor: accent }}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg hover:opacity-95 transition cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t.saveCredentials}</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

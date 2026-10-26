@@ -125,7 +125,11 @@ export const googleSignIn = async (
 };
 
 export const googleSignOut = async (): Promise<void> => {
-  await signOut(auth);
+  try {
+    await signOut(auth);
+  } catch (e) {
+    // ignore
+  }
   cachedAccessToken = null;
 };
 
@@ -135,6 +139,103 @@ export const getAccessToken = (): string | null => {
 
 export const setAccessTokenInMemory = (token: string | null) => {
   cachedAccessToken = token;
+};
+
+export interface GoogleUserProfile {
+  email: string;
+  name: string;
+  picture?: string;
+  id?: string;
+}
+
+export const getGoogleClientId = (): string => {
+  return (
+    localStorage.getItem('vault_google_client_id') ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID) ||
+    ''
+  );
+};
+
+export const getGoogleApiKey = (): string => {
+  return (
+    localStorage.getItem('vault_google_api_key') ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_API_KEY) ||
+    ''
+  );
+};
+
+export const setGoogleApiConfig = (clientId: string, apiKey: string) => {
+  if (clientId) localStorage.setItem('vault_google_client_id', clientId.trim());
+  else localStorage.removeItem('vault_google_client_id');
+
+  if (apiKey) localStorage.setItem('vault_google_api_key', apiKey.trim());
+  else localStorage.removeItem('vault_google_api_key');
+};
+
+/**
+ * Google Identity Services (GIS) Token Client sign in
+ * Obtains an access token with Google Drive and user profile scopes
+ */
+export const signInWithGIS = async (): Promise<{ profile: GoogleUserProfile; accessToken: string }> => {
+  const clientId = getGoogleClientId();
+  if (!clientId) {
+    throw new Error('MISSING_CLIENT_ID');
+  }
+
+  if (typeof window === 'undefined' || !(window as any).google?.accounts?.oauth2) {
+    throw new Error('Google Identity Services SDK is loading. Please wait 2 seconds or check internet connection.');
+  }
+
+  return new Promise((resolve, reject) => {
+    try {
+      const client = (window as any).google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope:
+          'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+        callback: async (response: any) => {
+          if (response.error) {
+            reject(new Error(response.error_description || response.error));
+            return;
+          }
+          if (!response.access_token) {
+            reject(new Error('No access token returned from Google'));
+            return;
+          }
+
+          const accessToken = response.access_token;
+          cachedAccessToken = accessToken;
+
+          try {
+            const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            const profileData = await userRes.json();
+            resolve({
+              profile: {
+                email: profileData.email || 'user@gmail.com',
+                name: profileData.name || profileData.email?.split('@')[0] || 'Google User',
+                picture: profileData.picture,
+                id: profileData.sub,
+              },
+              accessToken,
+            });
+          } catch (e) {
+            resolve({
+              profile: {
+                email: 'user@gmail.com',
+                name: 'Google User',
+              },
+              accessToken,
+            });
+          }
+        },
+      });
+
+      client.requestAccessToken({ prompt: 'consent' });
+    } catch (err: any) {
+      reject(err);
+    }
+  });
 };
 
 /**
