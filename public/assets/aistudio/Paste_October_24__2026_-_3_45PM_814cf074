@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HD Video Vault & Learning Hub</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Kantumruy Pro', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors duration-200 min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar (Inspired by Image 3) -->
+    <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 gap-2 overflow-x-auto">
+                
+                <!-- Logo & Title -->
+                <div class="flex items-center gap-3 shrink-0">
+                    <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md">
+                        <i class="fa-solid fa-play text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base sm:text-lg leading-tight text-blue-600 dark:text-blue-400" id="appTitle">Angkor English</h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400" id="appSubtitle">Learn & Grow Together</p>
+                    </div>
+                </div>
+
+                <!-- Center Nav Features (Row Style like Image 3) -->
+                <nav class="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-700/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium">
+                    <button onclick="switchTab('categories')" id="nav-lessons" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-book"></i> <span class="txt-lessons">Lessons</span>
+                    </button>
+                    <button onclick="switchTab('videos')" id="nav-all" class="px-3 py-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-photo-film"></i> <span class="txt-all-videos">All Videos</span>
+                    </button>
+                    <button class="px-3 py-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-question"></i> <span class="txt-quiz">Quiz</span>
+                    </button>
+                    <button class="px-3 py-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-spell-check"></i> <span class="txt-vocab">Vocabulary</span>
+                    </button>
+                    <button class="px-3 py-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-line"></i> <span class="txt-analytics">Analytics</span>
+                    </button>
+                </nav>
+
+                <!-- Right Tools (Language, Theme, Upload, Account) -->
+                <div class="flex items-center gap-2 shrink-0">
+                    
+                    <!-- Search Bar -->
+                    <div class="relative hidden sm:block w-36 lg:w-48">
+                        <input type="text" id="searchInput" onkeyup="filterVideos()" placeholder="Search..." class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-400 text-xs"></i>
+                    </div>
+
+                    <!-- Language Switcher -->
+                    <button onclick="toggleLanguage()" class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold flex items-center gap-1 shadow-sm">
+                        <i class="fa-solid fa-language text-blue-500"></i>
+                        <span id="currentLangBtn">EN</span>
+                    </button>
+
+                    <!-- Theme Toggle (Dark/Light) -->
+                    <button onclick="toggleDarkMode()" class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm">
+                        <i class="fa-solid fa-moon dark:hidden text-xs"></i>
+                        <i class="fa-solid fa-sun hidden dark:block text-amber-400 text-xs"></i>
+                    </button>
+
+                    <!-- Upload HD Button -->
+                    <button onclick="triggerUpload()" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-md flex items-center gap-1.5">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span class="hidden sm:inline txt-upload">Upload HD</span>
+                    </button>
+                    <input type="file" id="videoFileInput" accept="video/*" class="hidden" onchange="handleFileUpload(event)">
+
+                    <!-- Gmail User Profile -->
+                    <div class="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-700">
+                        <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs ring-2 ring-blue-400/30">
+                            P
+                        </div>
+                        <div class="hidden lg:block text-left text-xs">
+                            <div class="font-semibold leading-none">Phon Phal</div>
+                            <div class="text-[10px] text-slate-400 leading-none mt-1">phonphalhdvk@gmail.com</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+        
+        <!-- Category Filter Pills (Image 1 Style) -->
+        <div class="flex items-center justify-between gap-3 mb-6 overflow-x-auto pb-2">
+            <div class="flex items-center gap-2 shrink-0" id="categoryFilterBar">
+                <!-- Dynamically Generated Category Pills -->
+            </div>
+            
+            <button onclick="openManageCategoriesModal()" class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1.5 shrink-0 hover:bg-slate-50 dark:hover:bg-slate-700">
+                <i class="fa-solid fa-gear"></i>
+                <span class="txt-manage-cat">Edit Categories</span>
+            </button>
+        </div>
+
+        <!-- PAGE 1: CATEGORY CARDS VIEW (DEFAULT LANDING - Image 3 Style) -->
+        <section id="categoriesView" class="block">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-blue-500"></i>
+                    <span class="txt-cat-heading">Learning Levels & Categories</span>
+                </h2>
+                <span class="text-xs text-slate-500" id="categoryCountText">3 Categories available</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="categoryGrid">
+                <!-- Cards dynamically populated via JS -->
+            </div>
+        </section>
+
+        <!-- PAGE 2: VIDEOS GRID VIEW (Image 1 Style) -->
+        <section id="videosView" class="hidden">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-video text-blue-500"></i>
+                    <span id="currentCategoryTitle">All Videos</span>
+                </h2>
+                <span class="text-xs text-slate-500" id="videoCountText">0 Videos</span>
+            </div>
+
+            <!-- Video Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="videoGrid">
+                <!-- Videos rendered dynamically -->
+            </div>
+
+            <div id="noVideosMessage" class="hidden text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+                <i class="fa-solid fa-film text-4xl text-slate-300 dark:text-slate-600 mb-3"></i>
+                <p class="text-slate-500 dark:text-slate-400 text-sm txt-no-videos">No videos found in this category.</p>
+                <button onclick="triggerUpload()" class="mt-4 px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg shadow-sm">
+                    <i class="fa-solid fa-plus mr-1"></i> <span class="txt-upload-now">Upload Video Now</span>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Video Modal Player -->
+    <div id="videoModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 rounded-2xl overflow-hidden max-w-4xl w-full shadow-2xl border border-slate-700">
+            <div class="p-4 flex items-center justify-between border-b border-slate-800">
+                <h3 class="font-semibold text-white text-sm" id="modalVideoTitle">Video Player</h3>
+                <button onclick="closeVideoModal()" class="text-slate-400 hover:text-white p-1 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="aspect-video bg-black flex items-center justify-center">
+                <video id="modalVideoPlayer" controls class="w-full h-full"></video>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Management Modal -->
+    <div id="categoryModal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-base txt-edit-cat-title">Edit Category Names</h3>
+                <button onclick="closeManageCategoriesModal()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3" id="categoryEditList">
+                <!-- Editable inputs generated via JS -->
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="closeManageCategoriesModal()" class="px-4 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-600 txt-cancel">Cancel</button>
+                <button onclick="saveCategoryNames()" class="px-4 py-2 text-xs bg-blue-600 text-white rounded-lg font-semibold txt-save">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // Default Data & State
+        let currentLang = 'km'; // 'km' or 'en'
+        let selectedCategory = 'all';
+        let categories = [
+            { id: 'beginner', nameKm: 'កម្រិតដំបូង', nameEn: 'Beginner Level', badge: 'Tier 1', color: 'bg-emerald-500' },
+            { id: 'intermediate', nameKm: 'កម្រិតមធ្យម', nameEn: 'Intermediate Level', badge: 'Tier 2', color: 'bg-blue-500' },
+            { id: 'advanced', nameKm: 'កម្រិតខ្ពស់', nameEn: 'Advanced Level', badge: 'Tier 3', color: 'bg-purple-500' }
+        ];
+
+        let videos = [
+            {
+                id: 1,
+                title: 'IMG_8992.MP4 - ការផ្លាស់ប្តូរលេខសម្ងាត់ក្នុង TMS',
+                quality: '720p HD',
+                category: 'beginner',
+                date: 'Oct 24, 2026',
+                size: '14.7 MB',
+                duration: '01:59',
+                src: 'https://www.w3schools.com/html/mov_bbb.mp4'
+            },
+            {
+                id: 2,
+                title: 'Angkor Wat Sunrise - Siem Reap 4K Drone Footage',
+                quality: '4K UHD',
+                category: 'intermediate',
+                date: 'Oct 22, 2026',
+                size: '150.7 MB',
+                duration: '09:56',
+                src: 'https://www.w3schools.com/html/mov_bbb.mp4'
+            },
+            {
+                id: 3,
+                title: 'Koh Rong Sanloem Island Crystal Waves FHD',
+                quality: '1080p FHD',
+                category: 'advanced',
+                date: 'Oct 19, 2026',
+                size: '40.1 MB',
+                duration: '00:15',
+                src: 'https://www.w3schools.com/html/mov_bbb.mp4'
+            }
+        ];
+
+        // Language Dictionary
+        const i18n = {
+            en: {
+                appTitle: 'Angkor English',
+                appSubtitle: 'Learn & Grow Together',
+                lessons: 'Lessons',
+                allVideos: 'All Videos',
+                quiz: 'Quiz',
+                vocab: 'Vocabulary',
+                analytics: 'Analytics',
+                upload: 'Upload HD',
+                manageCat: 'Edit Categories',
+                catHeading: 'Learning Levels & Categories',
+                noVideos: 'No videos found in this category.',
+                uploadNow: 'Upload Video Now',
+                editCatTitle: 'Edit Category Names',
+                cancel: 'Cancel',
+                save: 'Save Changes',
+                all: 'All'
+            },
+            km: {
+                appTitle: 'អង្គរ អង់គ្លេស',
+                appSubtitle: 'រៀន និងរីកចម្រើនជាមួយគ្នា',
+                lessons: 'មេរៀន',
+                allVideos: 'វីដេអូទាំងអស់',
+                quiz: 'កម្រងសំណួរ',
+                vocab: 'ពាក្យគន្លឹះ',
+                analytics: 'ការវិភាគ',
+                upload: 'បញ្ចូលវីដេអូ HD',
+                manageCat: 'កែឈ្មោះប្រភេទ',
+                catHeading: 'កម្រិតមេរៀន និងប្រភេទវីដេអូ',
+                noVideos: 'មិនទាន់មានវីដេអូក្នុងប្រភេទនេះទេ។',
+                uploadNow: 'បញ្ចូលវីដេអូឥឡូវនេះ',
+                editCatTitle: 'កែសម្រួលឈ្មោះប្រភេទវីដេអូ',
+                cancel: 'បោះបង់',
+                save: 'រក្សាទុក',
+                all: 'ទាំងអស់'
+            }
+        };
+
+        // Initialize App
+        window.onload = function() {
+            renderCategoryFilterPills();
+            renderCategoryCards();
+            renderVideos();
+            updateLanguageTexts();
+        };
+
+        // Toggle Dark / Light Mode
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+        }
+
+        // Toggle Language (EN / KM)
+        function toggleLanguage() {
+            currentLang = currentLang === 'km' ? 'en' : 'km';
+            document.getElementById('currentLangBtn').innerText = currentLang.toUpperCase();
+            updateLanguageTexts();
+            renderCategoryFilterPills();
+            renderCategoryCards();
+            renderVideos();
+        }
+
+        function updateLanguageTexts() {
+            const t = i18n[currentLang];
+            document.getElementById('appTitle').innerText = t.appTitle;
+            document.getElementById('appSubtitle').innerText = t.appSubtitle;
+            document.querySelectorAll('.txt-lessons').forEach(el => el.innerText = t.lessons);
+            document.querySelectorAll('.txt-all-videos').forEach(el => el.innerText = t.allVideos);
+            document.querySelectorAll('.txt-quiz').forEach(el => el.innerText = t.quiz);
+            document.querySelectorAll('.txt-vocab').forEach(el => el.innerText = t.vocab);
+            document.querySelectorAll('.txt-analytics').forEach(el => el.innerText = t.analytics);
+            document.querySelectorAll('.txt-upload').forEach(el => el.innerText = t.upload);
+            document.querySelectorAll('.txt-manage-cat').forEach(el => el.innerText = t.manageCat);
+            document.querySelectorAll('.txt-cat-heading').forEach(el => el.innerText = t.catHeading);
+            document.querySelectorAll('.txt-no-videos').forEach(el => el.innerText = t.noVideos);
+            document.querySelectorAll('.txt-upload-now').forEach(el => el.innerText = t.uploadNow);
+            document.querySelectorAll('.txt-edit-cat-title').forEach(el => el.innerText = t.editCatTitle);
+            document.querySelectorAll('.txt-cancel').forEach(el => el.innerText = t.cancel);
+            document.querySelectorAll('.txt-save').forEach(el => el.innerText = t.save);
+        }
+
+        // Switch Views (Categories View vs Videos View)
+        function switchTab(tab) {
+            const catView = document.getElementById('categoriesView');
+            const vidView = document.getElementById('videosView');
+            
+            if (tab === 'categories') {
+                catView.classList.remove('hidden');
+                vidView.classList.add('hidden');
+                document.getElementById('nav-lessons').className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-blue-400 flex items-center gap-1.5";
+                document.getElementById('nav-all').className = "px-3 py-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 flex items-center gap-1.5";
+            } else {
+                catView.classList.add('hidden');
+                vidView.classList.remove('hidden');
+                document.getElementById('nav-all').className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-blue-400 flex items-center gap-1.5";
+                document.getElementById('nav-lessons').className = "px-3 py-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 flex items-center gap-1.5";
+            }
+        }
+
+        // Render Top Category Filter Pills
+        function renderCategoryFilterPills() {
+            const container = document.getElementById('categoryFilterBar');
+            const allText = i18n[currentLang].all;
+
+            let html = `
+                <button onclick="selectCategory('all')" class="px-3 py-1.5 rounded-lg text-xs font-semibold ${selectedCategory === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}">
+                    ${allText} (All)
+                </button>
+            `;
+
+            categories.forEach(cat => {
+                const name = currentLang === 'km' ? cat.nameKm : cat.nameEn;
+                const active = selectedCategory === cat.id;
+                html += `
+                    <button onclick="selectCategory('${cat.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold ${active ? 'bg-blue-600 text-white shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}">
+                        ${name}
+                    </button>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Render Category Landing Cards (Image 3 Style)
+        function renderCategoryCards() {
+            const grid = document.getElementById('categoryGrid');
+            grid.innerHTML = '';
+
+            categories.forEach(cat => {
+                const name = currentLang === 'km' ? cat.nameKm : cat.nameEn;
+                const count = videos.filter(v => v.category === cat.id).length;
+
+                const card = document.createElement('div');
+                card.className = "bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col justify-between h-56 relative overflow-hidden group";
+                card.onclick = () => selectCategory(cat.id);
+
+                card.innerHTML = `
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-slate-100 dark:bg-slate-700/30 rounded-bl-full -mr-10 -mt-10 transition group-hover:scale-110"></div>
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="px-2.5 py-1 text-[10px] font-bold rounded-md bg-blue-50 dark:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-600">${cat.badge}</span>
+                            <span class="text-xs text-slate-400 font-medium">${count} Videos</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">${name}</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Master lessons systematically for ${name.toLowerCase()}.</p>
+                    </div>
+                    <div class="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                        <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                            Browse Videos <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </span>
+                        <div class="w-8 h-8 rounded-full ${cat.color} text-white flex items-center justify-center text-xs shadow-sm">
+                            <i class="fa-solid fa-play"></i>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Select Category & Switch to Video View
+        function selectCategory(catId) {
+            selectedCategory = catId;
+            renderCategoryFilterPills();
+            
+            const catObj = categories.find(c => c.id === catId);
+            const title = catId === 'all' ? (i18n[currentLang].allVideos) : (currentLang === 'km' ? catObj.nameKm : catObj.nameEn);
+            document.getElementById('currentCategoryTitle').innerText = title;
+
+            switchTab('videos');
+            renderVideos();
+        }
+
+        // Render Video Grid Cards (Image 1 Style)
+        function renderVideos() {
+            const grid = document.getElementById('videoGrid');
+            const noMsg = document.getElementById('noVideosMessage');
+            grid.innerHTML = '';
+
+            let filtered = videos;
+            if (selectedCategory !== 'all') {
+                filtered = videos.filter(v => v.category === selectedCategory);
+            }
+
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            if (searchVal) {
+                filtered = filtered.filter(v => v.title.toLowerCase().includes(searchVal));
+            }
+
+            document.getElementById('videoCountText').innerText = `${filtered.length} Videos`;
+
+            if (filtered.length === 0) {
+                noMsg.classList.remove('hidden');
+                return;
+            } else {
+                noMsg.classList.add('hidden');
+            }
+
+            filtered.forEach(vid => {
+                const catObj = categories.find(c => c.id === vid.category) || {};
+                const catName = currentLang === 'km' ? (catObj.nameKm || 'General') : (catObj.nameEn || 'General');
+
+                const card = document.createElement('div');
+                card.className = "bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition flex flex-col";
+                
+                card.innerHTML = `
+                    <!-- Video Thumbnail / Player Overlay -->
+                    <div class="relative bg-slate-900 aspect-video flex items-center justify-center group cursor-pointer" onclick="openVideoModal('${vid.title}', '${vid.src}')">
+                        <div class="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/20">
+                            ${vid.quality}
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-blue-600/90 text-white flex items-center justify-center text-lg shadow-lg group-hover:scale-110 transition">
+                            <i class="fa-solid fa-play ml-0.5"></i>
+                        </div>
+                        <div class="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
+                            ${vid.duration}
+                        </div>
+                    </div>
+
+                    <!-- Video Details -->
+                    <div class="p-4 flex-1 flex flex-col justify-between">
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100 line-clamp-2 mb-2" title="${vid.title}">${vid.title}</h4>
+                            <div class="flex items-center gap-2 text-[11px] text-slate-400 mb-3">
+                                <span>Stored: ${vid.date}</span>
+                                <span>•</span>
+                                <span>${vid.size}</span>
+                                <span>•</span>
+                                <span class="text-blue-500 font-medium">${catName}</span>
+                            </div>
+                        </div>
+
+                        <!-- Footer Cloud Badge (Image 1 Style) -->
+                        <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700/60 text-xs">
+                            <span class="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Cloud Synced
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <a href="${vid.src}" download class="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                                    <i class="fa-solid fa-download"></i>
+                                </a>
+                                <button class="p-1.5 text-slate-400 hover:text-amber-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                                    <i class="fa-regular fa-star"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Upload Handling
+        function triggerUpload() {
+            document.getElementById('videoFileInput').click();
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const url = URL.createObjectURL(file);
+            const newVid = {
+                id: Date.now(),
+                title: file.name,
+                quality: '1080p FHD',
+                category: selectedCategory === 'all' ? 'beginner' : selectedCategory,
+                date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
+                duration: '02:30',
+                src: url
+            };
+
+            videos.unshift(newVid);
+            renderVideos();
+            renderCategoryCards();
+            switchTab('videos');
+        }
+
+        // Filter / Search
+        function filterVideos() {
+            renderVideos();
+        }
+
+        // Modal Controls
+        function openVideoModal(title, src) {
+            document.getElementById('modalVideoTitle').innerText = title;
+            const player = document.getElementById('modalVideoPlayer');
+            player.src = src;
+            document.getElementById('videoModal').classList.remove('hidden');
+            player.play();
+        }
+
+        function closeVideoModal() {
+            const player = document.getElementById('modalVideoPlayer');
+            player.pause();
+            player.src = '';
+            document.getElementById('videoModal').classList.add('hidden');
+        }
+
+        // Category Edit Modal
+        function openManageCategoriesModal() {
+            const list = document.getElementById('categoryEditList');
+            list.innerHTML = '';
+
+            categories.forEach((cat, i) => {
+                list.innerHTML += `
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Category ${i+1} (${cat.badge})</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" id="cat-km-${cat.id}" value="${cat.nameKm}" class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700" placeholder="Khmer Name">
+                            <input type="text" id="cat-en-${cat.id}" value="${cat.nameEn}" class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700" placeholder="English Name">
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('categoryModal').classList.remove('hidden');
+        }
+
+        function closeManageCategoriesModal() {
+            document.getElementById('categoryModal').classList.add('hidden');
+        }
+
+        function saveCategoryNames() {
+            categories.forEach(cat => {
+                const kmVal = document.getElementById(`cat-km-${cat.id}`).value;
+                const enVal = document.getElementById(`cat-en-${cat.id}`).value;
+                if (kmVal) cat.nameKm = kmVal;
+                if (enVal) cat.nameEn = enVal;
+            });
+
+            closeManageCategoriesModal();
+            renderCategoryFilterPills();
+            renderCategoryCards();
+            renderVideos();
+        }
+    </script>
+</body>
+</html>

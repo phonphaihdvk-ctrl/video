@@ -1,0 +1,6 @@
+{
+  "name": "Cloud HD Video Vault - Google Connected",
+  "description": "Secure HD cloud video storage vault connected with Google account, featuring instant video upload, high-resolution playback, smart categorization, and bilingual Khmer-English support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

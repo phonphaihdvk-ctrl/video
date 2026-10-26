@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HD Video Vault & Learning Hub - 5TB Cloud</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#1a73e8', 600: '#1557b0' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Kantumruy Pro', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 gap-2">
+                
+                <!-- Left: Toggle Sidebar & Logo -->
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-md">
+                            <i class="fa-solid fa-cloud text-base"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-base leading-tight text-blue-600 dark:text-blue-400" id="appTitle">HD Video Vault</h1>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400">Connected to 5TB Google Drive</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center: Navigation Features -->
+                <nav class="hidden lg:flex items-center gap-1 bg-slate-100 dark:bg-slate-700/50 p-1.5 rounded-xl text-xs font-medium">
+                    <button onclick="switchTab('categories')" id="nav-lessons" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-book"></i> <span class="txt-lessons">Lessons</span>
+                    </button>
+                    <button onclick="switchTab('videos')" id="nav-all" class="px-3 py-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-photo-film"></i> <span class="txt-all-videos">All Videos</span>
+                    </button>
+                    <button class="px-3 py-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-question"></i> <span class="txt-quiz">Quiz</span>
+                    </button>
+                    <button class="px-3 py-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-line"></i> <span class="txt-analytics">Analytics</span>
+                    </button>
+                </nav>
+
+                <!-- Right: Controls & Profile -->
+                <div class="flex items-center gap-2">
+                    <!-- Language Switcher -->
+                    <button onclick="toggleLanguage()" class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold flex items-center gap-1 shadow-sm">
+                        <i class="fa-solid fa-language text-blue-500"></i>
+                        <span id="currentLangBtn">EN</span>
+                    </button>
+
+                    <!-- Theme Switcher -->
+                    <button onclick="toggleDarkMode()" class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm">
+                        <i class="fa-solid fa-moon dark:hidden text-xs"></i>
+                        <i class="fa-solid fa-sun hidden dark:block text-amber-400 text-xs"></i>
+                    </button>
+
+                    <!-- Upload Button -->
+                    <button onclick="triggerUpload()" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-md flex items-center gap-1.5">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span class="hidden sm:inline txt-upload">Upload HD</span>
+                    </button>
+                    <input type="file" id="videoFileInput" accept="video/*" class="hidden" onchange="handleFileUpload(event)">
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Overlay & Sidebar Drawer (Based on Image 4) -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-50 hidden transition-opacity"></div>
+    
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-72 bg-white dark:bg-slate-800 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl flex flex-col justify-between border-r border-slate-200 dark:border-slate-700">
+        <div>
+            <!-- Header Close Button -->
+            <div class="p-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-700">
+                <span class="font-bold text-sm text-slate-600 dark:text-slate-300">Google Drive Menu</span>
+                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- User Profile Section (Image 4) -->
+            <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                    P
+                </div>
+                <div class="overflow-hidden">
+                    <div class="font-semibold text-xs text-slate-800 dark:text-slate-100 truncate">Phon Phal</div>
+                    <div class="text-[11px] text-slate-500 truncate">phonphaihdvk@gmail.com</div>
+                </div>
+            </div>
+
+            <!-- Drive Menu Links (Image 4) -->
+            <div class="p-2 space-y-1 text-xs">
+                <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-blue-50 dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-semibold">
+                    <i class="fa-solid fa-hard-drive w-4 text-center"></i>
+                    <span>My Drive</span>
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50">
+                    <i class="fa-solid fa-user-group w-4 text-center"></i>
+                    <span>Shared with me</span>
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50">
+                    <i class="fa-regular fa-clock w-4 text-center"></i>
+                    <span>Recent</span>
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50">
+                    <i class="fa-regular fa-star w-4 text-center"></i>
+                    <span>Starred</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Drive Storage Info (Image 4: 0% of 5 TB used) -->
+        <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <div class="flex items-center justify-between text-xs font-semibold mb-1 text-slate-700 dark:text-slate-300">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-cloud text-blue-500"></i> Storage</span>
+                <span id="storageText">0% of 5 TB used</span>
+            </div>
+            <div class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-3">
+                <div class="h-full bg-blue-600 rounded-full" style="width: 2%;"></div>
+            </div>
+            <a href="https://drive.google.com" target="_blank" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-sm">
+                <i class="fa-brands fa-google-drive"></i> Open Google Drive
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+        
+        <!-- Category Filter Pills -->
+        <div class="flex items-center justify-between gap-3 mb-6 overflow-x-auto pb-2">
+            <div class="flex items-center gap-2 shrink-0" id="categoryFilterBar"></div>
+            
+            <button onclick="openManageCategoriesModal()" class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1.5 shrink-0">
+                <i class="fa-solid fa-gear"></i>
+                <span class="txt-manage-cat">Edit Categories</span>
+            </button>
+        </div>
+
+        <!-- PAGE 1: CATEGORY CARDS VIEW -->
+        <section id="categoriesView" class="block">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-blue-500"></i>
+                    <span class="txt-cat-heading">Learning Levels & Categories</span>
+                </h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="categoryGrid"></div>
+        </section>
+
+        <!-- PAGE 2: VIDEOS GRID VIEW -->
+        <section id="videosView" class="hidden">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-video text-blue-500"></i>
+                    <span id="currentCategoryTitle">All Videos</span>
+                </h2>
+                <span class="text-xs text-slate-500" id="videoCountText">0 Videos</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="videoGrid"></div>
+
+            <div id="noVideosMessage" class="hidden text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+                <i class="fa-solid fa-film text-4xl text-slate-300 dark:text-slate-600 mb-3"></i>
+                <p class="text-slate-500 dark:text-slate-400 text-sm txt-no-videos">No videos found in this category.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Video Modal Player -->
+    <div id="videoModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 rounded-2xl overflow-hidden max-w-4xl w-full shadow-2xl border border-slate-700">
+            <div class="p-4 flex items-center justify-between border-b border-slate-800">
+                <h3 class="font-semibold text-white text-sm" id="modalVideoTitle">Video Player</h3>
+                <button onclick="closeVideoModal()" class="text-slate-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="aspect-video bg-black flex items-center justify-center">
+                <video id="modalVideoPlayer" controls class="w-full h-full"></video>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="categoryModal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-base txt-edit-cat-title">Edit Category Names</h3>
+                <button onclick="closeManageCategoriesModal()" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3" id="categoryEditList"></div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="closeManageCategoriesModal()" class="px-4 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-600 txt-cancel">Cancel</button>
+                <button onclick="saveCategoryNames()" class="px-4 py-2 text-xs bg-blue-600 text-white rounded-lg font-semibold txt-save">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+        let currentLang = 'km';
+        let selectedCategory = 'all';
+        let categories = [
+            { id: 'beginner', nameKm: 'កម្រិតដំបូង', nameEn: 'Beginner Level', badge: 'Tier 1', color: 'bg-emerald-500' },
+            { id: 'intermediate', nameKm: 'កម្រិតមធ្យម', nameEn: 'Intermediate Level', badge: 'Tier 2', color: 'bg-blue-500' },
+            { id: 'advanced', nameKm: 'កម្រិតខ្ពស់', nameEn: 'Advanced Level', badge: 'Tier 3', color: 'bg-purple-500' }
+        ];
+
+        let videos = [
+            {
+                id: 1,
+                title: 'IMG_8992.MP4 - ការផ្លាស់ប្តូរលេខសម្ងាត់ក្នុង TMS',
+                quality: '720p HD',
+                category: 'beginner',
+                date: 'Oct 24, 2026',
+                size: '14.7 MB',
+                duration: '01:59',
+                src: 'https://www.w3schools.com/html/mov_bbb.mp4'
+            },
+            {
+                id: 2,
+                title: 'Angkor Wat Sunrise - Siem Reap 4K Drone Footage',
+                quality: '4K UHD',
+                category: 'intermediate',
+                date: 'Oct 22, 2026',
+                size: '150.7 MB',
+                duration: '09:56',
+                src: 'https://www.w3schools.com/html/mov_bbb.mp4'
+            }
+        ];
+
+        const i18n = {
+            en: {
+                appTitle: 'HD Video Vault',
+                lessons: 'Lessons',
+                allVideos: 'All Videos',
+                quiz: 'Quiz',
+                analytics: 'Analytics',
+                upload: 'Upload HD',
+                manageCat: 'Edit Categories',
+                catHeading: 'Learning Levels & Categories',
+                noVideos: 'No videos found in this category.',
+                editCatTitle: 'Edit Category Names',
+                cancel: 'Cancel',
+                save: 'Save Changes',
+                all: 'All'
+            },
+            km: {
+                appTitle: 'HD Video Vault',
+                lessons: 'មេរៀន',
+                allVideos: 'វីដេអូទាំងអស់',
+                quiz: 'កម្រងសំណួរ',
+                analytics: 'ការវិភាគ',
+                upload: 'បញ្ចូលវីដេអូ HD',
+                manageCat: 'កែឈ្មោះប្រភេទ',
+                catHeading: 'កម្រិតមេរៀន និងប្រភេទវីដេអូ',
+                noVideos: 'មិនទាន់មានវីដេអូក្នុងប្រភេទនេះទេ។',
+                editCatTitle: 'កែសម្រួលឈ្មោះប្រភេទវីដេអូ',
+                cancel: 'បោះបង់',
+                save: 'រក្សាទុក',
+                all: 'ទាំងអស់'
+            }
+        };
+
+        window.onload = function() {
+            renderCategoryFilterPills();
+            renderCategoryCards();
+            renderVideos();
+            updateLanguageTexts();
+        };
+
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sb.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        function toggleDarkMode() { document.documentElement.classList.toggle('dark'); }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'km' ? 'en' : 'km';
+            document.getElementById('currentLangBtn').innerText = currentLang.toUpperCase();
+            updateLanguageTexts();
+            renderCategoryFilterPills();
+            renderCategoryCards();
+            renderVideos();
+        }
+
+        function updateLanguageTexts() {
+            const t = i18n[currentLang];
+            document.getElementById('appTitle').innerText = t.appTitle;
+            document.querySelectorAll('.txt-lessons').forEach(el => el.innerText = t.lessons);
+            document.querySelectorAll('.txt-all-videos').forEach(el => el.innerText = t.allVideos);
+            document.querySelectorAll('.txt-quiz').forEach(el => el.innerText = t.quiz);
+            document.querySelectorAll('.txt-analytics').forEach(el => el.innerText = t.analytics);
+            document.querySelectorAll('.txt-upload').forEach(el => el.innerText = t.upload);
+            document.querySelectorAll('.txt-manage-cat').forEach(el => el.innerText = t.manageCat);
+            document.querySelectorAll('.txt-cat-heading').forEach(el => el.innerText = t.catHeading);
+            document.querySelectorAll('.txt-no-videos').forEach(el => el.innerText = t.noVideos);
+            document.querySelectorAll('.txt-edit-cat-title').forEach(el => el.innerText = t.editCatTitle);
+            document.querySelectorAll('.txt-cancel').forEach(el => el.innerText = t.cancel);
+            document.querySelectorAll('.txt-save').forEach(el => el.innerText = t.save);
+        }
+
+        function switchTab(tab) {
+            const catView = document.getElementById('categoriesView');
+            const vidView = document.getElementById('videosView');
+            if (tab === 'categories') {
+                catView.classList.remove('hidden');
+                vidView.classList.add('hidden');
+            } else {
+                catView.classList.add('hidden');
+                vidView.classList.remove('hidden');
+            }
+        }
+
+        function renderCategoryFilterPills() {
+            const container = document.getElementById('categoryFilterBar');
+            let html = `<button onclick="selectCategory('all')" class="px-3 py-1.5 rounded-lg text-xs font-semibold ${selectedCategory === 'all' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}">${i18n[currentLang].all} (All)</button>`;
+            categories.forEach(cat => {
+                const name = currentLang === 'km' ? cat.nameKm : cat.nameEn;
+                html += `<button onclick="selectCategory('${cat.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold ${selectedCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}">${name}</button>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderCategoryCards() {
+            const grid = document.getElementById('categoryGrid');
+            grid.innerHTML = '';
+            categories.forEach(cat => {
+                const name = currentLang === 'km' ? cat.nameKm : cat.nameEn;
+                const count = videos.filter(v => v.category === cat.id).length;
+                const card = document.createElement('div');
+                card.className = "bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col justify-between h-52 relative overflow-hidden group";
+                card.onclick = () => selectCategory(cat.id);
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-50 dark:bg-slate-700 text-blue-600 dark:text-blue-400">${cat.badge}</span>
+                            <span class="text-xs text-slate-400 font-medium">${count} Videos</span>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">${name}</h3>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                        <span class="text-xs font-semibold text-blue-600 dark:text-blue-400">Open Folder</span>
+                        <div class="w-7 h-7 rounded-full ${cat.color} text-white flex items-center justify-center text-xs"><i class="fa-solid fa-play"></i></div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function selectCategory(catId) {
+            selectedCategory = catId;
+            renderCategoryFilterPills();
+            switchTab('videos');
+            renderVideos();
+        }
+
+        function renderVideos() {
+            const grid = document.getElementById('videoGrid');
+            const noMsg = document.getElementById('noVideosMessage');
+            grid.innerHTML = '';
+            let filtered = selectedCategory === 'all' ? videos : videos.filter(v => v.category === selectedCategory);
+            document.getElementById('videoCountText').innerText = `${filtered.length} Videos`;
+
+            if (filtered.length === 0) {
+                noMsg.classList.remove('hidden');
+                return;
+            } else {
+                noMsg.classList.add('hidden');
+            }
+
+            filtered.forEach(vid => {
+                const card = document.createElement('div');
+                card.className = "bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col";
+                card.innerHTML = `
+                    <div class="relative bg-slate-900 aspect-video flex items-center justify-center cursor-pointer" onclick="openVideoModal('${vid.title}', '${vid.src}')">
+                        <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-base shadow-lg"><i class="fa-solid fa-play ml-0.5"></i></div>
+                    </div>
+                    <div class="p-3">
+                        <h4 class="font-bold text-xs text-slate-800 dark:text-slate-100 truncate mb-1" title="${vid.title}">${vid.title}</h4>
+                        <div class="flex items-center gap-2 text-[10px] text-slate-400">
+                            <span>${vid.date}</span> • <span>${vid.size}</span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function triggerUpload() { document.getElementById('videoFileInput').click(); }
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            videos.unshift({
+                id: Date.now(),
+                title: file.name,
+                quality: '1080p FHD',
+                category: selectedCategory === 'all' ? 'beginner' : selectedCategory,
+                date: 'Just Now',
+                size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
+                duration: '01:00',
+                src: URL.createObjectURL(file)
+            });
+            renderVideos();
+            renderCategoryCards();
+            switchTab('videos');
+        }
+
+        function openVideoModal(title, src) {
+            document.getElementById('modalVideoTitle').innerText = title;
+            const player = document.getElementById('modalVideoPlayer');
+            player.src = src;
+            document.getElementById('videoModal').classList.remove('hidden');
+            player.play();
+        }
+
+        function closeVideoModal() {
+            const player = document.getElementById('modalVideoPlayer');
+            player.pause();
+            document.getElementById('videoModal').classList.add('hidden');
+        }
+
+        function openManageCategoriesModal() {
+            const list = document.getElementById('categoryEditList');
+            list.innerHTML = '';
+            categories.forEach((cat) => {
+                list.innerHTML += `
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="cat-km-${cat.id}" value="${cat.nameKm}" class="px-3 py-1.5 text-xs rounded-lg border dark:bg-slate-700">
+                        <input type="text" id="cat-en-${cat.id}" value="${cat.nameEn}" class="px-3 py-1.5 text-xs rounded-lg border dark:bg-slate-700">
+                    </div>
+                `;
+            });
+            document.getElementById('categoryModal').classList.remove('hidden');
+        }
+
+        function closeManageCategoriesModal() { document.getElementById('categoryModal').classList.add('hidden'); }
+
+        function saveCategoryNames() {
+            categories.forEach(cat => {
+                const km = document.getElementById(`cat-km-${cat.id}`).value;
+                const en = document.getElementById(`cat-en-${cat.id}`).value;
+                if(km) cat.nameKm = km;
+                if(en) cat.nameEn = en;
+            });
+            closeManageCategoriesModal();
+            renderCategoryFilterPills();
+            renderCategoryCards();
+        }
+    </script>
+</body>
+</html>
