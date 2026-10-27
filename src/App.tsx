@@ -3259,7 +3259,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Clean Full-Bleed Video Modal Layout (Pure Google Drive Native Embed Player - Zero Bottom Controls) */}
+      {/* Clean Full-Bleed Video Modal Layout with Instant Native Play Button */}
       {playVideo && (
         <div
           className="fixed inset-0 z-50 bg-black flex flex-col justify-between animate-in fade-in duration-200"
@@ -3312,7 +3312,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Full available screen Google Drive Native Embed iframe (Zero custom bottom controls) */}
+          {/* Full available screen Google Drive Native Embed iframe */}
           <div
             className="w-full flex-1 relative flex items-center justify-center overflow-hidden"
             onClick={(e) => e.stopPropagation()}
@@ -3334,6 +3334,26 @@ export default function App() {
                 title={playVideo.name}
               />
             )}
+          </div>
+
+          {/* Instant Action Button for Third-Party Cookie / Storage Access Restrictions */}
+          <div
+            className="w-full px-4 py-2.5 sm:py-3 bg-black/85 backdrop-blur-md border-t border-white/10 flex items-center justify-center shrink-0 z-20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <a
+              href={
+                playVideo.driveId || (!playVideo.id.startsWith('demo_') && !playVideo.id.startsWith('local_'))
+                  ? `https://drive.google.com/file/d/${playVideo.driveId || playVideo.id}/view`
+                  : playVideo.url
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ backgroundColor: accent }}
+              className="neon-action-btn w-full max-w-xl py-2.5 sm:py-3 px-4 rounded-xl sm:rounded-2xl text-white text-xs sm:text-sm font-bold shadow-lg hover:opacity-95 active:scale-[0.99] transition flex items-center justify-center gap-2 text-center"
+            >
+              <span>▶️ ចាក់វីដេអូផ្ទាល់ / បើក Fullscreen (Open Native Video Player)</span>
+            </a>
           </div>
         </div>
       )}
