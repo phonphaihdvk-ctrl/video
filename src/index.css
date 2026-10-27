@@ -80,3 +80,26 @@
   transform: translateY(-1px) scale(1.02);
 }
 
+/* បង្ខំលុបផ្ទាំងប៊ូតុងរញ៉េរញ៉ៃទាំងអស់ដែលជាន់ពីលើវីដេអូ */
+div[class*="z-[99999]"] div[class*="rounded"]:has(button),
+div[class*="z-[99999]"] button:not([aria-label="Close"]):not(:first-child),
+div[class*="z-[99999]"] input[type="range"],
+div[class*="z-[99999]"] .aspect-video + div,
+div[class*="fixed"]:has(iframe) div[class*="rounded"]:has(button),
+div[class*="fixed"]:has(iframe) button:not([aria-label="Close"]):not(:first-child),
+div[class*="fixed"]:has(iframe) input[type="range"],
+div[class*="fixed"]:has(iframe) .aspect-video + div {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ធានាឱ្យវីដេអូ និងប៊ូតុងបិទ (✕) បង្ហាញបានធម្មតា */
+div[class*="fixed"] iframe,
+div[class*="z-[99999]"] iframe {
+  display: block !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+

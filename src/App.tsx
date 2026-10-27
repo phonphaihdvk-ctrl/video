@@ -3585,18 +3585,19 @@ export default function App() {
       {/* --- VIDEO MODAL ស្អាត ១០០% គ្មានប៊ូតុងបាំង --- */}
       {(selectedVideo || playVideo) && (
         <div className="fixed inset-0 z-[99999] bg-black w-screen h-[100dvh] flex items-center justify-center p-0 m-0 overflow-hidden">
-          {/* ប៊ូតុងបិទ ✕ មួយគត់នៅជ្រុងខាងស្ដាំលើ */}
+          {/* ប៊ូតុងបិទ ✕ មួយគត់ */}
           <button
             onClick={() => {
               setSelectedVideo(null);
               setPlayVideo(null);
             }}
-            className="absolute top-4 right-4 z-50 w-11 h-11 flex items-center justify-center rounded-full bg-black/70 text-white border border-white/20 hover:bg-black text-xl cursor-pointer"
+            aria-label="Close"
+            className="absolute top-4 right-4 z-50 p-3 rounded-full bg-black/70 text-white border border-white/20 text-xl cursor-pointer"
           >
             ✕
           </button>
 
-          {/* ផ្ទាំងចាក់វីដេអូ Drive ដើមពេញអេក្រង់ទូរស័ព្ទ */}
+          {/* ទុកតែ Iframe Drive សុទ្ធ ១០០% (ព្រោះវាចាក់វីដេអូដើរស្រាប់ហើយ) */}
           <iframe
             src={`https://drive.google.com/file/d/${
               typeof (selectedVideo || playVideo) === "string"
