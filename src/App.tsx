@@ -907,6 +907,17 @@ export default function App() {
     };
   }, [playVideo]);
 
+  // Lock body scroll and prevent background content from leaking in landscape
+  useEffect(() => {
+    if (playVideo) {
+      const origOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = origOverflow;
+      };
+    }
+  }, [playVideo]);
+
   // Dismiss Quality Menu on outside click or Escape key
   useEffect(() => {
     if (!showQualityMenu) return;
@@ -3571,43 +3582,23 @@ export default function App() {
       {/* Clean Full-Bleed Video Modal Layout with Instant Native Play Button */}
       {playVideo && (
         <div
-          className="fixed inset-0 z-50 bg-black flex items-center justify-center p-0 m-0 overflow-hidden animate-in fade-in duration-200"
-          onClick={() => setPlayVideo(null)}
+          className="fixed inset-0 z-[9999] bg-black w-screen h-[100dvh] flex items-center justify-center m-0 p-0 overflow-hidden animate-in fade-in duration-200"
         >
-          {/* Minimalist Floating Header: Video Title, file size, and Close button (✕) only */}
-          <div
-            className="absolute top-0 left-0 right-0 w-full px-4 py-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent flex items-center justify-between z-30 pointer-events-auto"
-            onClick={(e) => e.stopPropagation()}
+          {/* ONLY ONE minimal floating Close button (✕) at the top-right corner */}
+          <button
+            type="button"
+            onClick={() => setPlayVideo(null)}
+            className="absolute top-3 right-3 z-50 p-2 sm:p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition cursor-pointer active:scale-95 border border-white/20 shadow-lg"
+            title="Close Player"
+            aria-label="Close Player"
           >
-            {/* Left: Video file name and size */}
-            <div className="truncate max-w-[80%] sm:max-w-[85%] pr-2">
-              <h3 className="text-xs sm:text-sm font-semibold truncate text-white drop-shadow-md">
-                {playVideo.name}
-              </h3>
-              <span className="text-[10px] sm:text-xs text-slate-300/80 font-mono drop-shadow-sm">
-                {playVideo.size}
-              </span>
-            </div>
+            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
 
-            {/* Right: Simple Close button (✕) only */}
-            <button
-              type="button"
-              onClick={() => setPlayVideo(null)}
-              className="p-2 sm:p-2.5 rounded-full bg-black/50 hover:bg-white/20 text-white transition cursor-pointer shrink-0 border border-white/10 active:scale-95 backdrop-blur-xs"
-              title="Close Player"
-              aria-label="Close Player"
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Responsive Video Container & Orientation Fit */}
-          <div
-            className="w-full h-full max-w-full max-h-full relative flex items-center justify-center p-0 m-0 overflow-hidden bg-black"
-            onClick={(e) => e.stopPropagation()}
-          >
+          {/* Pure Native Mobile Video Display: Direct Tap Interaction & Landscape Auto-Fit */}
+          <div className="w-full h-full flex items-center justify-center p-0 m-0 bg-black">
             {playVideo.id.startsWith('demo_') || playVideo.id.startsWith('local_') ? (
               <video
                 src={playVideo.url}
@@ -3620,7 +3611,7 @@ export default function App() {
               <iframe
                 src={`https://drive.google.com/file/d/${playVideo.driveId || playVideo.id}/preview`}
                 className="w-full h-full border-0 pointer-events-auto"
-                allow="autoplay; fullscreen"
+                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                 allowFullScreen
                 title={playVideo.name}
               />
@@ -3629,7 +3620,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Add / Edit Folder Modal */}
       {folderModal.open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200"
