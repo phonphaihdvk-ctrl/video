@@ -21,7 +21,12 @@ import {
   setAccessTokenInMemory,
   VaultUserSession,
 } from './utils/googleDrive';
-
+import {
+  generateQrDataUrl,
+  downloadQrImage,
+  decodeQrFromImageFile,
+  scanVideoFrameForQr,
+} from './utils/qrHelper';
 
 export type Language = 'km' | 'en';
 
@@ -55,7 +60,7 @@ export const TRANSLATIONS = {
     move: 'Move Folder',
     changePin: 'Change PIN',
     lockPin: 'Lock with PIN',
-    qrLogin: 'Camera QR Login',
+    qrLogin: 'Scan QR to Login (Camera / Image)',
     signOut: 'Sign Out',
     signOutComplete: 'Sign Out Completely',
     signInGoogle: 'Sign in with Google (Cloud Sync)',
@@ -67,8 +72,6 @@ export const TRANSLATIONS = {
     openDevPanel: 'Open Developer Admin Panel',
     developerBadge: 'Developer Approved (Super Admin)',
     verifiedMember: 'Verified Vault Member',
-    accessPending: 'Access Pending Developer Approval',
-    pendingDesc: 'Your account is pending review by Developer Admin Phon Phal (phonphaihdvk@gmail.com).',
     videoQuality: 'Video Quality',
     qualityAuto: 'Auto (Original Stream)',
     quality1080: '1080p Full HD',
@@ -79,12 +82,31 @@ export const TRANSLATIONS = {
     landscape: 'Landscape',
     mute: 'Mute',
     unmute: 'Unmute',
-    cameraScanTitle: 'Active Camera QR Scanner',
-    cameraScanDesc: 'Point device camera at a Vault QR code to log in directly',
-    scanningCamera: 'Scanning active camera feed...',
+    uploadQrDesc: 'Choose an image file containing a Vault Login QR code',
+    uploadQrImage: 'Upload QR Code Image',
+    cameraScanTitle: 'QR Code Login Scanner',
+    cameraScanDesc: 'Upload a QR code picture or scan with camera to log in directly',
+    uploadQrOption: '📁 Upload QR Image',
+    cameraScanOption: '🎥 Live Camera',
+    flipCamera: '🔄 Flip Camera',
+    scanningCamera: 'Scanning active camera feed for QR...',
     startCamera: 'Start Camera',
     stopCamera: 'Stop Camera',
-    simulateScan: 'Simulate Quick Login',
+    downloadPersonalQr: 'Download Personal Login QR',
+    downloadQrHint: 'Save this QR code to log into your account instantly on any phone, tablet, or PC.',
+    accessPending: '⏳ Account Pending Developer Approval',
+    pendingDesc: '⏳ គណនីរបស់អ្នកកំពុងរង់ចាំការអនុម័តពី Developer (Account Pending Developer Approval). សូមទាក់ទង Developer ដើម្បីបើកសិទ្ធិចូលប្រើប្រាស់។',
+    pendingDetail: 'Your account is pending review by Developer Admin Phon Phal (phonphaihdvk@gmail.com). Contact the developer to enable vault access.',
+    checkStatus: 'Check Status',
+    backToLogin: 'Back to Login',
+    userManagement: 'User Management',
+    approveUser: 'Approve',
+    blockUser: 'Block',
+    deleteUser: 'Delete',
+    preapproveUser: '+ Pre-approve User',
+    qrNotFoundInImage: 'No QR code was detected in this image. Please select a clear QR code image.',
+    qrValidSuccess: 'QR Code verified! Logging in...',
+    qrInvalidFormat: 'Invalid QR code. Please provide a valid Vault login QR.',
     storageDisplay: 'Cloud Storage Status',
     storageTier: 'Google Drive Cloud Storage (5 TB)',
     storageUsage: 'Cloud Storage Usage',
@@ -171,7 +193,7 @@ export const TRANSLATIONS = {
     move: 'ប្តូរថត',
     changePin: 'ប្ដូរលេខកូដសម្ងាត់',
     lockPin: 'ចាក់សោ PIN',
-    qrLogin: 'ស្កេនកាមេរ៉ា QR ចូលប្រើ',
+    qrLogin: 'ស្កេន QR Code ចូលប្រើប្រាស់',
     signOut: 'ចាកចេញ',
     signOutComplete: 'ចាកចេញទាំងស្រុង',
     signInGoogle: 'ចូលដោយគណនី Google (ធ្វើសមកាលកម្ម)',
@@ -183,8 +205,6 @@ export const TRANSLATIONS = {
     openDevPanel: 'បើកផ្ទាំងគ្រប់គ្រងអ្នកអភិវឌ្ឍន៍',
     developerBadge: 'បានអនុម័តដោយ Developer (Super Admin)',
     verifiedMember: 'សមាជិក Vault ផ្លូវការ',
-    accessPending: 'កំពុងរង់ចាំការអនុម័តពី Developer',
-    pendingDesc: 'គណនីរបស់អ្នកកំពុងរង់ចាំការយល់ព្រមពី Developer Admin Phon Phal (phonphaihdvk@gmail.com)។',
     videoQuality: 'កម្រិតគុណភាពវីដេអូ',
     qualityAuto: 'ស្វ័យប្រវត្តិ (Auto Original)',
     quality1080: '1080p កម្រិតច្បាស់ Full HD',
@@ -195,12 +215,31 @@ export const TRANSLATIONS = {
     landscape: 'ផ្ដេក (Landscape)',
     mute: 'បិទសំឡេង',
     unmute: 'បើកសំឡេង',
+    uploadQrDesc: 'ជ្រើសរើសរូបភាពដែលមានកូដ QR គណនី Vault របស់អ្នក',
+    uploadQrImage: '📁 ជ្រើសរើសរូបភាព QR (Upload QR Code Image)',
     cameraScanTitle: 'ម៉ាស៊ីនស្កេនកាមេរ៉ា QR Code',
-    cameraScanDesc: 'តម្រង់កាមេរ៉ារបស់អ្នកទៅកាន់កូដ QR ដើម្បីចូលប្រើភ្លាមៗ',
-    scanningCamera: 'កំពុងស្កេនតាមកាមេរ៉ា...',
+    cameraScanDesc: 'ជ្រើសរើសរូបភាព QR ឬបើកកាមេរ៉ាដើម្បីចូលប្រើប្រាស់ភ្លាមៗ',
+    uploadQrOption: '📁 ជ្រើសរូបភាព QR',
+    cameraScanOption: '🎥 កាមេរ៉ាផ្ទាល់',
+    flipCamera: '🔄 ប្ដូរកាមេរ៉ា (Flip Camera)',
+    scanningCamera: 'កំពុងស្កេនកាមេរ៉ាស្វែងរក QR Code...',
     startCamera: 'បើកកាមេរ៉ា',
     stopCamera: 'បិទកាមេរ៉ា',
-    simulateScan: 'ចូលប្រើសាកល្បងភ្លាមៗ',
+    downloadPersonalQr: '💾 ទាញយក QR Code ផ្ទាល់ខ្លួន (Download Login QR)',
+    downloadQrHint: 'រក្សាទុកកូដ QR នេះ ដើម្បីចូលប្រើគណនីរបស់អ្នកភ្លាមៗលើទូរស័ព្ទ ឬឧបករណ៍ផ្សេងទៀត។',
+    accessPending: '⏳ គណនីរបស់អ្នកកំពុងរង់ចាំការអនុម័តពី Developer',
+    pendingDesc: '⏳ គណនីរបស់អ្នកកំពុងរង់ចាំការអនុម័តពី Developer (Account Pending Developer Approval). សូមទាក់ទង Developer ដើម្បីបើកសិទ្ធិចូលប្រើប្រាស់។',
+    pendingDetail: 'គណនីរបស់អ្នកត្រូវបានចុះឈ្មោះរួចរាល់ ហើយកំពុងរង់ចាំការយល់ព្រមពី Developer Admin Phon Phal (phonphaihdvk@gmail.com)។',
+    checkStatus: '🔄 ពិនិត្យស្ថានភាព (Check Status)',
+    backToLogin: '← ត្រឡប់ទៅទំព័រចូល (Back to Login)',
+    userManagement: 'ការគ្រប់គ្រងអ្នកប្រើប្រាស់ (User Management)',
+    approveUser: 'អនុម័ត (Approve)',
+    blockUser: 'ផ្អាក (Block)',
+    deleteUser: 'លុប (Delete)',
+    preapproveUser: '+ បន្ថែមសិទ្ធិជាមុន',
+    qrNotFoundInImage: 'មិនអាចរកឃើញ QR Code ក្នុងរូបភាពនេះទេ សូមសាកល្បងរូបភាពផ្សេង។',
+    qrValidSuccess: 'បានផ្ទៀងផ្ទាត់ QR Code ជោគជ័យ! កំពុងចូល...',
+    qrInvalidFormat: 'ទិន្នន័យ QR មិនត្រឹមត្រូវ សូមប្រើ QR Code គណនី Vault។',
     storageDisplay: 'ទំហំផ្ទុកទិន្នន័យក្លោដ',
     storageTier: 'ទំហំផ្ទុក Google Drive (5 TB)',
     storageUsage: 'ទំហំផ្ទុកទិន្នន័យក្លោដប្រើប្រាស់',
@@ -560,11 +599,20 @@ export default function App() {
   const [loginPinInput, setLoginPinInput] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // Active Camera QR Scanner State
+  // Active Camera & Upload QR Scanner State
   const [showCameraQRScanner, setShowCameraQRScanner] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'environment' | 'user'>('environment');
+  const [qrScanTab, setQrScanTab] = useState<'upload' | 'camera'>('upload');
+  const [qrScanError, setQrScanError] = useState('');
+  const [qrScanLoading, setQrScanLoading] = useState(false);
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
+  const qrScanCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const qrImageFileInputRef = useRef<HTMLInputElement | null>(null);
+  const qrAnimFrameRef = useRef<number | null>(null);
+  const [currentUserQrDataUrl, setCurrentUserQrDataUrl] = useState<string>('');
+  const [userSearchQuery, setUserSearchQuery] = useState('');
 
   // Strict Separation: Video Vault & Photo Vault Folder-First Hierarchy States
   const [tab, setTab] = useState<'videos' | 'photos' | 'all' | 'favorites'>('videos');
@@ -1028,26 +1076,126 @@ export default function App() {
     }
   };
 
-  // Camera QR Code Scanner logic
-  const startCameraScan = async () => {
+  // QR Code Login & Dual Scanner Logic (Image Upload + Live Camera)
+  const handleProcessQrLogin = (scannedEmail: string) => {
+    const email = scannedEmail.trim().toLowerCase();
+    stopCameraScan();
+    setShowCameraQRScanner(false);
+    setQrScanError('');
+
+    const isDev = email === DEVELOPER_ADMIN_EMAIL.toLowerCase();
+
+    // Register or update user in vaultUsers
+    setVaultUsers((prev) => {
+      const exists = prev.find((u) => u.email.toLowerCase() === email);
+      if (!exists) {
+        const updated = [
+          ...prev,
+          {
+            email: email,
+            name: email.split('@')[0],
+            status: (isDev ? 'approved' : 'pending') as 'approved' | 'pending',
+            role: (isDev ? 'admin' : 'user') as 'admin' | 'user',
+            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          },
+        ];
+        try {
+          localStorage.setItem('vault_users_list', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      }
+      return prev;
+    });
+
+    setIsAuthenticated(true);
+    setUserEmail(email);
+    localStorage.setItem('vault_auth_active', 'true');
+    localStorage.setItem('vault_user_email', email);
+
+    if (isDev) {
+      setStatusMessage(lang === 'km' ? 'បានចូលដោយ Super Admin Developer (Phon Phal)!' : 'Welcome Super Admin Developer (Phon Phal)!');
+    } else {
+      setStatusMessage(lang === 'km' ? `បានស្កេនជោគជ័យ៖ ${email}` : `Logged in via QR: ${email}`);
+    }
+    setTimeout(() => setStatusMessage(''), 4000);
+  };
+
+  const handleUploadQrFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setQrScanLoading(true);
+    setQrScanError('');
+
+    try {
+      const result = await decodeQrFromImageFile(file);
+      if (result.email) {
+        handleProcessQrLogin(result.email);
+      } else if (result.text && result.text.includes('@')) {
+        handleProcessQrLogin(result.text);
+      } else {
+        setQrScanError(t.qrInvalidFormat || 'Invalid QR code payload.');
+      }
+    } catch (err: any) {
+      console.warn('QR file decode error:', err);
+      setQrScanError(t.qrNotFoundInImage || 'No QR code found in this image.');
+    } finally {
+      setQrScanLoading(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const startCameraScan = async (facing: 'environment' | 'user' = cameraFacingMode) => {
+    stopCameraScan();
     setIsCameraActive(true);
+    setQrScanError('');
+
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
+          video: { facingMode: facing },
         });
         cameraStreamRef.current = stream;
         if (cameraVideoRef.current) {
           cameraVideoRef.current.srcObject = stream;
-          cameraVideoRef.current.play().catch(() => {});
+          await cameraVideoRef.current.play().catch(() => {});
         }
+
+        // Real-time continuous scanning loop using requestAnimationFrame
+        const scanLoop = () => {
+          if (cameraVideoRef.current && qrScanCanvasRef.current) {
+            const res = scanVideoFrameForQr(cameraVideoRef.current, qrScanCanvasRef.current);
+            if (res && res.email) {
+              handleProcessQrLogin(res.email);
+              return;
+            }
+          }
+          qrAnimFrameRef.current = requestAnimationFrame(scanLoop);
+        };
+        qrAnimFrameRef.current = requestAnimationFrame(scanLoop);
+      } else {
+        setQrScanError('Camera not supported or restricted in this browser.');
       }
     } catch (err) {
-      console.warn('Camera access error or restricted iframe:', err);
+      console.warn('Camera access error or permission denied:', err);
+      setQrScanError('Could not access camera. Please allow camera permissions or upload a QR image.');
+      setIsCameraActive(false);
+    }
+  };
+
+  const toggleCameraFacing = async () => {
+    const newFacing = cameraFacingMode === 'environment' ? 'user' : 'environment';
+    setCameraFacingMode(newFacing);
+    if (isCameraActive) {
+      await startCameraScan(newFacing);
     }
   };
 
   const stopCameraScan = () => {
+    if (qrAnimFrameRef.current) {
+      cancelAnimationFrame(qrAnimFrameRef.current);
+      qrAnimFrameRef.current = null;
+    }
     if (cameraStreamRef.current) {
       cameraStreamRef.current.getTracks().forEach((track) => track.stop());
       cameraStreamRef.current = null;
@@ -1055,15 +1203,26 @@ export default function App() {
     setIsCameraActive(false);
   };
 
-  const handleSimulateQRScanLogin = (scannedEmail = 'phonphaihdvk@gmail.com') => {
-    stopCameraScan();
-    setShowCameraQRScanner(false);
-    setIsAuthenticated(true);
-    setUserEmail(scannedEmail);
-    localStorage.setItem('vault_auth_active', 'true');
-    localStorage.setItem('vault_user_email', scannedEmail);
-    setStatusMessage(`Logged in via Camera QR Scan: ${scannedEmail}`);
-    setTimeout(() => setStatusMessage(''), 4000);
+  // Generate User Login QR Code Data URL
+  useEffect(() => {
+    if (userEmail) {
+      generateQrDataUrl(userEmail)
+        .then((url) => setCurrentUserQrDataUrl(url))
+        .catch((err) => console.warn('QR gen error:', err));
+    }
+  }, [userEmail]);
+
+  const handleDownloadPersonalQr = async () => {
+    const targetEmail = userEmail || 'phonphaihdvk@gmail.com';
+    try {
+      const qrUrl = currentUserQrDataUrl || (await generateQrDataUrl(targetEmail));
+      const cleanName = targetEmail.replace(/[^a-zA-Z0-9]/g, '_');
+      downloadQrImage(qrUrl, `vault-login-qr-${cleanName}.png`);
+      setStatusMessage(lang === 'km' ? 'បានទាញយក QR Code ជោគជ័យ!' : 'Personal QR Code downloaded successfully!');
+      setTimeout(() => setStatusMessage(''), 3500);
+    } catch (err) {
+      console.warn('Download QR error:', err);
+    }
   };
 
   const handleSaveApiConfig = (e: React.FormEvent) => {
@@ -1112,8 +1271,8 @@ export default function App() {
               {
                 email: email,
                 name: gisResult.user.displayName || 'Google User',
-                status: isDev ? 'approved' : 'pending',
-                role: isDev ? 'admin' : 'user',
+                status: (isDev ? 'approved' : 'pending') as 'approved' | 'pending',
+                role: (isDev ? 'admin' : 'user') as 'admin' | 'user',
                 date: 'Just now',
               },
             ];
@@ -1182,8 +1341,8 @@ export default function App() {
           {
             email: email,
             name: email.split('@')[0],
-            status: isDev ? 'approved' : 'pending',
-            role: isDev ? 'admin' : 'user',
+            status: (isDev ? 'approved' : 'pending') as 'approved' | 'pending',
+            role: (isDev ? 'admin' : 'user') as 'admin' | 'user',
             date: 'Just now',
           },
         ];
@@ -1730,11 +1889,28 @@ export default function App() {
 
   // Developer User Approval Actions
   const handleUpdateUserStatus = (email: string, status: 'approved' | 'rejected') => {
-    setVaultUsers((prev) =>
-      prev.map((u) => (u.email.toLowerCase() === email.toLowerCase() ? { ...u, status } : u))
-    );
-    setStatusMessage(`User ${email} ${status}.`);
+    setVaultUsers((prev) => {
+      const updated = prev.map((u) => (u.email.toLowerCase() === email.toLowerCase() ? { ...u, status } : u));
+      try {
+        localStorage.setItem('vault_users_list', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    setStatusMessage(lang === 'km' ? `អ្នកប្រើប្រាស់ ${email} ត្រូវបាន ${status === 'approved' ? 'អនុម័ត (Approved)' : 'ផ្អាក (Blocked)'}!` : `User ${email} ${status}.`);
     setTimeout(() => setStatusMessage(''), 4000);
+  };
+
+  const handleDeleteUser = (email: string) => {
+    if (email.toLowerCase() === DEVELOPER_ADMIN_EMAIL.toLowerCase()) return;
+    setVaultUsers((prev) => {
+      const updated = prev.filter((u) => u.email.toLowerCase() !== email.toLowerCase());
+      try {
+        localStorage.setItem('vault_users_list', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    setStatusMessage(lang === 'km' ? `បានលុបអ្នកប្រើប្រាស់ ${email}!` : `Deleted user ${email}!`);
+    setTimeout(() => setStatusMessage(''), 3500);
   };
 
   const handlePreapproveUser = (e: React.FormEvent) => {
@@ -1743,23 +1919,27 @@ export default function App() {
     if (!cleanEmail || !cleanEmail.includes('@')) return;
 
     if (vaultUsers.some((u) => u.email.toLowerCase() === cleanEmail)) {
-      setStatusMessage('User already in approval list.');
+      setStatusMessage(lang === 'km' ? 'គណនីនេះមានក្នុងបញ្ជីរួចហើយ!' : 'User already in approval list.');
       setTimeout(() => setStatusMessage(''), 3000);
       return;
     }
 
-    setVaultUsers([
+    const updatedUsers: VaultUser[] = [
       ...vaultUsers,
       {
         email: cleanEmail,
         name: cleanEmail.split('@')[0],
         status: 'approved',
         role: 'user',
-        date: 'Today',
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       },
-    ]);
+    ];
+    setVaultUsers(updatedUsers);
+    try {
+      localStorage.setItem('vault_users_list', JSON.stringify(updatedUsers));
+    } catch {}
     setNewPreapproveEmail('');
-    setStatusMessage(`Pre-approved ${cleanEmail}.`);
+    setStatusMessage(lang === 'km' ? `បានអនុម័តគណនី ${cleanEmail} ដោយជោគជ័យ!` : `Pre-approved ${cleanEmail}.`);
     setTimeout(() => setStatusMessage(''), 4000);
   };
 
@@ -2150,7 +2330,7 @@ export default function App() {
                   required
                   value={loginEmailInput}
                   onChange={(e) => setLoginEmailInput(e.target.value)}
-                  placeholder="phonphaihdvk@gmail.com"
+                  placeholder="example@gmail.com"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-white focus:outline-hidden focus:border-sky-500 placeholder-slate-500"
                 />
               </div>
@@ -2184,42 +2364,22 @@ export default function App() {
               </button>
             </form>
 
-            {/* Active Camera QR Scanner, One-Click Demo Guest, & Developer API Config */}
+            {/* Complete Dual QR Code Scanner & Developer API Config */}
             <div className="pt-2 border-t border-slate-800/60 space-y-2 text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCameraQRScanner(true);
-                    startCameraScan();
-                  }}
-                  className="py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span>{t.qrLogin}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAuthenticated(true);
-                    setUserEmail('guest.explorer@gmail.com');
-                    localStorage.setItem('vault_auth_active', 'true');
-                    localStorage.setItem('vault_user_email', 'guest.explorer@gmail.com');
-                    setStatusMessage(lang === 'km' ? 'បានចូលប្រើជាភ្ញៀវសាកល្បង (Guest Demo Mode) ដោយជោគជ័យ។' : 'Signed in as Demo Guest with full vault access.');
-                    setTimeout(() => setStatusMessage(''), 4000);
-                  }}
-                  className="py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <svg className="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span>{t.demoGuestMode}</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCameraQRScanner(true);
+                  setQrScanTab('upload');
+                  setQrScanError('');
+                }}
+                className="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-100 font-semibold transition cursor-pointer flex items-center justify-center gap-2 border border-slate-700 shadow-sm"
+              >
+                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+                <span>{t.qrLogin}</span>
+              </button>
 
               {/* Developer / API Configuration for Netlify & Google OAuth */}
               <button
@@ -2236,7 +2396,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* ACTIVE CAMERA QR CODE SCANNER MODAL */}
+        {/* DUAL QR CODE SCANNER MODAL: Image Upload + Live Camera Scanner */}
         {showCameraQRScanner && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
@@ -2245,76 +2405,199 @@ export default function App() {
               setShowCameraQRScanner(false);
             }}
           >
+            {/* Hidden canvas for decoding video frames and hidden input for file upload */}
+            <canvas ref={qrScanCanvasRef} className="hidden" />
+            <input
+              type="file"
+              ref={qrImageFileInputRef}
+              accept="image/*"
+              onChange={handleUploadQrFile}
+              className="hidden"
+            />
+
             <div
-              className="max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl text-center space-y-4 text-white"
+              className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl text-center space-y-4 text-white"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Modal Header */}
               <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                <span className="text-xs font-bold">{t.cameraScanTitle}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-bold text-white">{t.cameraScanTitle}</span>
+                </div>
                 <button
                   onClick={() => {
                     stopCameraScan();
                     setShowCameraQRScanner(false);
                   }}
-                  className="text-slate-400 hover:text-white cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-white rounded-full bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
 
-              <p className="text-[11px] text-slate-400">{t.cameraScanDesc}</p>
-
-              {/* Camera Viewfinder with Laser Scanner Overlay */}
-              <div className="relative w-64 h-64 mx-auto rounded-2xl overflow-hidden bg-black border-2 border-emerald-500/80 shadow-xl flex items-center justify-center">
-                <video
-                  ref={cameraVideoRef}
-                  playsInline
-                  muted
-                  autoPlay
-                  className="w-full h-full object-cover"
-                />
-
-                {/* Scanning Frame Corners */}
-                <div className="absolute inset-4 border border-emerald-500/40 rounded-xl pointer-events-none flex flex-col justify-between p-2">
-                  <div className="flex justify-between">
-                    <div className="w-5 h-5 border-t-2 border-l-2 border-emerald-400" />
-                    <div className="w-5 h-5 border-t-2 border-r-2 border-emerald-400" />
-                  </div>
-
-                  {/* Animated Laser Beam */}
-                  <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-lg animate-pulse" />
-
-                  <div className="flex justify-between">
-                    <div className="w-5 h-5 border-b-2 border-l-2 border-emerald-400" />
-                    <div className="w-5 h-5 border-b-2 border-r-2 border-emerald-400" />
-                  </div>
-                </div>
-
-                <div className="absolute bottom-2 text-[10px] bg-black/60 px-2 py-0.5 rounded text-emerald-400 font-mono">
-                  {t.scanningCamera}
-                </div>
-              </div>
-
-              {/* Instant Scan Simulation Option */}
-              <div className="space-y-2 pt-1">
+              {/* Dual Mode Switch: Upload Image vs Live Camera */}
+              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-slate-800/80 border border-slate-700/70">
                 <button
-                  onClick={() => handleSimulateQRScanLogin('phonphaihdvk@gmail.com')}
-                  style={{ backgroundColor: accent }}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold text-white shadow hover:opacity-90 active:scale-95 transition cursor-pointer"
-                >
-                  {t.simulateScan} (Phon Phal)
-                </button>
-
-                <button
+                  type="button"
                   onClick={() => {
                     stopCameraScan();
-                    setShowCameraQRScanner(false);
+                    setQrScanTab('upload');
+                    setQrScanError('');
                   }}
-                  className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition cursor-pointer"
+                  className={`py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                    qrScanTab === 'upload'
+                      ? 'bg-sky-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                  }`}
                 >
-                  {t.cancel}
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>{t.uploadQrOption}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQrScanTab('camera');
+                    setQrScanError('');
+                    startCameraScan(cameraFacingMode);
+                  }}
+                  className={`py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                    qrScanTab === 'camera'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span>{t.cameraScanOption}</span>
                 </button>
               </div>
+
+              {/* Mode 1: Image Upload QR Scanner */}
+              {qrScanTab === 'upload' && (
+                <div className="space-y-3">
+                  <div
+                    onClick={() => qrImageFileInputRef.current?.click()}
+                    className="group border-2 border-dashed border-sky-500/50 hover:border-sky-400 bg-sky-500/5 hover:bg-sky-500/10 rounded-2xl p-6 transition cursor-pointer flex flex-col items-center justify-center space-y-3"
+                  >
+                    <div className="w-14 h-14 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                      {qrScanLoading ? (
+                        <svg className="w-7 h-7 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white group-hover:text-sky-300 transition">
+                        {qrScanLoading ? 'កំពុងអាន QR Code...' : t.uploadQrImage}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{t.uploadQrDesc}</p>
+                    </div>
+                    <span className="px-3 py-1 rounded-lg bg-sky-600/30 text-sky-300 text-[11px] font-semibold border border-sky-500/40">
+                      PNG, JPG, WEBP, GIF
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Mode 2: Live Video Camera QR Scanner */}
+              {qrScanTab === 'camera' && (
+                <div className="space-y-3">
+                  <div className="relative w-64 h-64 mx-auto rounded-2xl overflow-hidden bg-black border-2 border-emerald-500/80 shadow-xl flex items-center justify-center">
+                    <video
+                      ref={cameraVideoRef}
+                      playsInline
+                      muted
+                      autoPlay
+                      className="w-full h-full object-cover"
+                    />
+
+                    {/* Scanning Frame Corners */}
+                    <div className="absolute inset-4 border border-emerald-500/40 rounded-xl pointer-events-none flex flex-col justify-between p-2">
+                      <div className="flex justify-between">
+                        <div className="w-5 h-5 border-t-2 border-l-2 border-emerald-400" />
+                        <div className="w-5 h-5 border-t-2 border-r-2 border-emerald-400" />
+                      </div>
+
+                      {/* Animated Laser Beam */}
+                      <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-lg animate-pulse" />
+
+                      <div className="flex justify-between">
+                        <div className="w-5 h-5 border-b-2 border-l-2 border-emerald-400" />
+                        <div className="w-5 h-5 border-b-2 border-r-2 border-emerald-400" />
+                      </div>
+                    </div>
+
+                    <div className="absolute bottom-2 text-[10px] bg-black/70 px-2 py-0.5 rounded text-emerald-400 font-mono">
+                      {t.scanningCamera}
+                    </div>
+                  </div>
+
+                  {/* Camera Controls: Flip & Start/Stop */}
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      type="button"
+                      onClick={toggleCameraFacing}
+                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition cursor-pointer flex items-center gap-1.5 border border-slate-700"
+                    >
+                      <svg className="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>{t.flipCamera} ({cameraFacingMode === 'environment' ? 'Back' : 'Front'})</span>
+                    </button>
+
+                    {isCameraActive ? (
+                      <button
+                        type="button"
+                        onClick={stopCameraScan}
+                        className="px-3 py-2 rounded-xl bg-rose-600/80 hover:bg-rose-600 text-xs font-semibold text-white transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <span>{t.stopCamera}</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => startCameraScan(cameraFacingMode)}
+                        className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <span>{t.startCamera}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Error Notification */}
+              {qrScanError && (
+                <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-medium">
+                  {qrScanError}
+                </div>
+              )}
+
+              {/* Cancel Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  stopCameraScan();
+                  setShowCameraQRScanner(false);
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition cursor-pointer"
+              >
+                {t.cancel}
+              </button>
             </div>
           </div>
         )}
@@ -2322,43 +2605,69 @@ export default function App() {
     );
   }
 
-  // 2. DEVELOPER APPROVAL GATE SCREEN: Displayed if non-approved user logs in
+  // 2. DEVELOPER APPROVAL GATE SCREEN: Clean status screen for pending accounts
   if (!isUserApproved) {
     return (
       <div className={`min-h-screen flex items-center justify-center p-4 ${bgClass}`}>
-        <div className="max-w-md w-full p-6 sm:p-8 rounded-3xl border border-amber-500/30 bg-slate-900/90 backdrop-blur-md shadow-2xl text-center space-y-5">
-          <div className="w-14 h-14 rounded-2xl mx-auto bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="max-w-md w-full p-6 sm:p-8 rounded-3xl border border-amber-500/40 bg-slate-900/95 backdrop-blur-md shadow-2xl text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl mx-auto bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-inner">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
 
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-white">{t.accessPending}</h2>
-            <p className="text-xs text-slate-400">
-              Account: <span className="text-sky-400 font-mono font-semibold">{userEmail}</span>
+          <div className="space-y-2">
+            <h2 className="text-base font-bold text-white leading-snug">
+              {t.accessPending}
+            </h2>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold font-mono">
+              <span>● Pending Review</span>
+            </div>
+            <p className="text-xs text-slate-300 pt-1 font-mono">
+              Account: <span className="text-sky-400 font-bold">{userEmail}</span>
             </p>
-            <p className="text-[11px] text-slate-400 pt-1">
-              {t.pendingDesc}
-            </p>
+            <div className="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/80 text-[11px] text-slate-300 leading-relaxed text-left space-y-1">
+              <p className="font-semibold text-amber-300">
+                ⏳ គណនីរបស់អ្នកកំពុងរង់ចាំការអនុម័តពី Developer (Account Pending Developer Approval).
+              </p>
+              <p className="text-slate-400">
+                សូមទាក់ទង Developer ដើម្បីបើកសិទ្ធិចូលប្រើប្រាស់។
+              </p>
+              <p className="text-[10px] text-slate-500 pt-1 border-t border-slate-700/50">
+                Developer Admin: <span className="text-slate-300 font-mono">phonphaihdvk@gmail.com</span>
+              </p>
+            </div>
           </div>
 
-          <div className="pt-2 flex gap-2">
+          <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
             <button
               onClick={handleSignOutComplete}
-              className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition cursor-pointer"
+              className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition cursor-pointer border border-slate-700"
             >
-              Back to Login
+              {t.backToLogin}
             </button>
             <button
               onClick={() => {
-                setStatusMessage('Checking approval status...');
-                setTimeout(() => setStatusMessage('Still pending developer approval. Please notify Phon Phal.'), 1000);
+                try {
+                  const raw = localStorage.getItem('vault_users_list');
+                  if (raw) {
+                    const parsed: VaultUser[] = JSON.parse(raw);
+                    setVaultUsers(parsed);
+                    const me = parsed.find((u) => u.email.toLowerCase() === (userEmail || '').toLowerCase());
+                    if (me && me.status === 'approved') {
+                      setStatusMessage(lang === 'km' ? '✅ គណនីត្រូវបានអនុម័តជោគជ័យ!' : '✅ Account approved! Welcome.');
+                      setTimeout(() => setStatusMessage(''), 3000);
+                      return;
+                    }
+                  }
+                } catch {}
+                setStatusMessage(lang === 'km' ? 'គណនីនៅតែស្ថិតក្នុងការរង់ចាំ។ សូមទាក់ទង Developer។' : 'Still pending Developer approval. Please notify Phon Phal.');
+                setTimeout(() => setStatusMessage(''), 3500);
               }}
               style={{ backgroundColor: accent }}
-              className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white shadow hover:opacity-90 transition cursor-pointer"
+              className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white shadow hover:opacity-90 active:scale-98 transition cursor-pointer"
             >
-              Check Status
+              {t.checkStatus}
             </button>
           </div>
         </div>
@@ -3262,59 +3571,41 @@ export default function App() {
       {/* Clean Full-Bleed Video Modal Layout with Instant Native Play Button */}
       {playVideo && (
         <div
-          className="fixed inset-0 z-50 bg-black flex flex-col justify-between animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black flex items-center justify-center p-0 m-0 overflow-hidden animate-in fade-in duration-200"
           onClick={() => setPlayVideo(null)}
         >
-          {/* Minimalist Top Bar: Slim, semi-transparent, and floating at the top */}
+          {/* Minimalist Floating Header: Video Title, file size, and Close button (✕) only */}
           <div
-            className="w-full px-4 py-2.5 sm:py-3 bg-black/60 backdrop-blur-md border-b border-white/10 flex items-center justify-between shrink-0 z-20"
+            className="absolute top-0 left-0 right-0 w-full px-4 py-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent flex items-center justify-between z-30 pointer-events-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Left: Video file name and size */}
-            <div className="truncate max-w-[65%] sm:max-w-[75%]">
-              <h3 className="text-xs sm:text-sm font-semibold truncate text-white drop-shadow">
+            <div className="truncate max-w-[80%] sm:max-w-[85%] pr-2">
+              <h3 className="text-xs sm:text-sm font-semibold truncate text-white drop-shadow-md">
                 {playVideo.name}
               </h3>
-              <span className="text-[10px] sm:text-xs text-slate-400 font-mono">
+              <span className="text-[10px] sm:text-xs text-slate-300/80 font-mono drop-shadow-sm">
                 {playVideo.size}
               </span>
             </div>
 
-            {/* Right: Direct Pop-out button (↗) linking to Google Drive view with target="_blank" and Close button (✕) */}
-            <div className="flex items-center gap-2 shrink-0">
-              <a
-                href={
-                  playVideo.driveId || (!playVideo.id.startsWith('demo_') && !playVideo.id.startsWith('local_'))
-                    ? `https://drive.google.com/file/d/${playVideo.driveId || playVideo.id}/view`
-                    : playVideo.url
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-mono transition cursor-pointer border border-white/10 active:scale-95"
-                title={lang === 'km' ? 'បើកផ្ទាំងពេញក្នុង Google Drive (↗)' : 'Pop-out Full Window (↗)'}
-                aria-label="Pop-out Full Window"
-              >
-                <span className="text-sm font-bold leading-none">↗</span>
-                <span className="hidden sm:inline text-[11px] font-sans">Drive</span>
-              </a>
-
-              <button
-                type="button"
-                onClick={() => setPlayVideo(null)}
-                className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer shrink-0 border border-white/10 active:scale-95"
-                title="Close Player"
-                aria-label="Close Player"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            {/* Right: Simple Close button (✕) only */}
+            <button
+              type="button"
+              onClick={() => setPlayVideo(null)}
+              className="p-2 sm:p-2.5 rounded-full bg-black/50 hover:bg-white/20 text-white transition cursor-pointer shrink-0 border border-white/10 active:scale-95 backdrop-blur-xs"
+              title="Close Player"
+              aria-label="Close Player"
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
-          {/* Full available screen Google Drive Native Embed iframe */}
+          {/* Responsive Video Container & Orientation Fit */}
           <div
-            className="w-full flex-1 relative flex items-center justify-center overflow-hidden"
+            className="w-full h-full max-w-full max-h-full relative flex items-center justify-center p-0 m-0 overflow-hidden bg-black"
             onClick={(e) => e.stopPropagation()}
           >
             {playVideo.id.startsWith('demo_') || playVideo.id.startsWith('local_') ? (
@@ -3323,37 +3614,17 @@ export default function App() {
                 controls
                 autoPlay
                 playsInline
-                className="w-full h-full object-contain bg-black"
+                className="w-full h-full max-w-full max-h-full object-contain bg-black pointer-events-auto"
               />
             ) : (
               <iframe
                 src={`https://drive.google.com/file/d/${playVideo.driveId || playVideo.id}/preview`}
-                className="w-full h-full border-0"
+                className="w-full h-full border-0 pointer-events-auto"
                 allow="autoplay; fullscreen"
                 allowFullScreen
                 title={playVideo.name}
               />
             )}
-          </div>
-
-          {/* Instant Action Button for Third-Party Cookie / Storage Access Restrictions */}
-          <div
-            className="w-full px-4 py-2.5 sm:py-3 bg-black/85 backdrop-blur-md border-t border-white/10 flex items-center justify-center shrink-0 z-20"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <a
-              href={
-                playVideo.driveId || (!playVideo.id.startsWith('demo_') && !playVideo.id.startsWith('local_'))
-                  ? `https://drive.google.com/file/d/${playVideo.driveId || playVideo.id}/view`
-                  : playVideo.url
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ backgroundColor: accent }}
-              className="neon-action-btn w-full max-w-xl py-2.5 sm:py-3 px-4 rounded-xl sm:rounded-2xl text-white text-xs sm:text-sm font-bold shadow-lg hover:opacity-95 active:scale-[0.99] transition flex items-center justify-center gap-2 text-center"
-            >
-              <span>▶️ ចាក់វីដេអូផ្ទាល់ / បើក Fullscreen (Open Native Video Player)</span>
-            </a>
           </div>
         </div>
       )}
@@ -4499,15 +4770,33 @@ export default function App() {
                 </form>
               </div>
 
-              {/* User management list */}
+              {/* User management list with Search & Delete */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-slate-400 font-semibold px-1">
-                  <span>Registered & Pre-approved Users ({vaultUsers.length})</span>
-                  <span>Access Status</span>
+                  <span>{t.userManagement || 'User Management'} ({vaultUsers.length})</span>
+                  <span className="text-[11px] text-slate-400">
+                    {vaultUsers.filter((u) => u.status === 'pending').length} Pending
+                  </span>
                 </div>
 
-                <div className="space-y-2 max-h-56 overflow-y-auto no-scrollbar">
-                  {vaultUsers.map((u) => (
+                {/* Search / Filter users */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    placeholder={lang === 'km' ? 'ស្វែងរកតាម Email (Search user)...' : 'Search users by email...'}
+                    className="w-full px-3 py-1.5 pl-8 rounded-xl bg-slate-800/90 border border-slate-700 text-xs text-white focus:outline-hidden focus:border-sky-500 placeholder-slate-500"
+                  />
+                  <svg className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+
+                <div className="space-y-2 max-h-60 overflow-y-auto no-scrollbar">
+                  {vaultUsers
+                    .filter((u) => !userSearchQuery || u.email.toLowerCase().includes(userSearchQuery.toLowerCase()))
+                    .map((u) => (
                     <div
                       key={u.email}
                       className="flex items-center justify-between p-3 rounded-2xl bg-slate-800/90 border border-slate-700/80 text-xs"
@@ -4518,7 +4807,7 @@ export default function App() {
                           <span className={`text-[10px] font-mono font-bold uppercase ${
                             u.status === 'approved' ? 'text-emerald-400' : u.status === 'rejected' ? 'text-rose-400' : 'text-amber-400'
                           }`}>
-                            ● {u.status} {u.role === 'admin' ? '(Admin)' : ''}
+                            ● {u.status} {u.role === 'admin' ? '(Super Admin)' : ''}
                           </span>
                           <span className="text-[10px] text-slate-500 font-mono">{u.date}</span>
                         </div>
@@ -4526,22 +4815,37 @@ export default function App() {
 
                       {u.email.toLowerCase() !== DEVELOPER_ADMIN_EMAIL.toLowerCase() ? (
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {u.status !== 'approved' && (
+                          {u.status !== 'approved' ? (
                             <button
                               onClick={() => handleUpdateUserStatus(u.email, 'approved')}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition cursor-pointer text-xs shadow-xs"
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition cursor-pointer text-[11px] shadow-xs flex items-center gap-1"
+                              title="Approve User"
                             >
-                              Approve
+                              <span>✓</span>
+                              <span>{t.approveUser || 'Approve'}</span>
                             </button>
-                          )}
-                          {u.status !== 'rejected' && (
+                          ) : (
                             <button
                               onClick={() => handleUpdateUserStatus(u.email, 'rejected')}
-                              className="px-2.5 py-1 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-white font-bold transition cursor-pointer text-xs shadow-xs"
+                              className="px-2 py-1 rounded-lg bg-amber-600/80 hover:bg-amber-600 text-white font-semibold transition cursor-pointer text-[11px] shadow-xs"
+                              title="Block User"
                             >
-                              Reject
+                              <span>{t.blockUser || 'Block'}</span>
                             </button>
                           )}
+                          <button
+                            onClick={() => {
+                              if (window.confirm(lang === 'km' ? `តើអ្នកចង់លុប ${u.email} ចេញពីបញ្ជី?` : `Remove ${u.email} from vault users?`)) {
+                                handleDeleteUser(u.email);
+                              }
+                            }}
+                            className="p-1 rounded-lg bg-slate-700 hover:bg-rose-700 text-slate-300 hover:text-white transition cursor-pointer"
+                            title="Delete User"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
                       ) : (
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30">
@@ -4639,61 +4943,58 @@ export default function App() {
         </div>
       )}
 
-      {/* QR Code Modal with Download QR Button */}
+      {/* Real QR Code Modal with Dynamic QR & Download Button */}
       {showQRModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setShowQRModal(false)}
         >
           <div
-            className="max-w-xs w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl text-center space-y-4 text-white"
+            className="max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl text-center space-y-4 text-white"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-              <span className="text-xs font-bold">QR Mobile Login</span>
+              <span className="text-xs font-bold">{t.downloadPersonalQr}</span>
               <button onClick={() => setShowQRModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
                 ✕
               </button>
             </div>
 
-            <p className="text-[11px] text-slate-400">Scan with phone camera to instantly link with your Cloud vault</p>
+            <p className="text-[11px] text-slate-400">{t.downloadQrHint}</p>
 
-            <div className="bg-white p-3 rounded-2xl mx-auto w-44 h-44 flex items-center justify-center shadow-lg">
-              <svg id="qr-code-svg" className="w-36 h-36" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <rect x="5" y="5" width="30" height="30" fill="none" stroke="#000" strokeWidth="6" />
-                <rect x="15" y="15" width="10" height="10" fill="#000" />
-                <rect x="65" y="5" width="30" height="30" fill="none" stroke="#000" strokeWidth="6" />
-                <rect x="75" y="15" width="10" height="10" fill="#000" />
-                <rect x="5" y="65" width="30" height="30" fill="none" stroke="#000" strokeWidth="6" />
-                <rect x="15" y="75" width="10" height="10" fill="#000" />
-                <rect x="45" y="10" width="8" height="8" fill="#0284c7" />
-                <rect x="45" y="25" width="8" height="8" fill="#000" />
-                <rect x="10" y="45" width="8" height="8" fill="#000" />
-                <rect x="25" y="45" width="8" height="8" fill="#0284c7" />
-                <rect x="40" y="40" width="20" height="20" fill="#0284c7" />
-                <rect x="65" y="45" width="8" height="8" fill="#000" />
-                <rect x="80" y="45" width="8" height="8" fill="#000" />
-                <rect x="45" y="65" width="8" height="8" fill="#000" />
-                <rect x="45" y="80" width="8" height="8" fill="#0284c7" />
-                <rect x="65" y="65" width="12" height="12" fill="#000" />
-                <rect x="82" y="82" width="8" height="8" fill="#000" />
-              </svg>
+            <div className="bg-white p-3.5 rounded-2xl mx-auto w-48 h-48 flex items-center justify-center shadow-lg">
+              {currentUserQrDataUrl ? (
+                <img
+                  src={currentUserQrDataUrl}
+                  alt="Vault Login QR"
+                  className="w-40 h-40 object-contain rounded-lg"
+                />
+              ) : (
+                <div className="w-40 h-40 flex items-center justify-center text-slate-500 text-xs animate-pulse">
+                  Generating QR Code...
+                </div>
+              )}
             </div>
 
-            <p className="text-[10px] text-emerald-400 font-mono">
-              Linked: {userEmail || 'phonphaihdvk@gmail.com'}
-            </p>
+            <div className="space-y-0.5">
+              <p className="text-xs font-bold text-white">
+                {userEmail || 'phonphaihdvk@gmail.com'}
+              </p>
+              <p className="text-[10px] text-emerald-400 font-mono">
+                ● 5 TB Cloud Media Vault
+              </p>
+            </div>
 
             <div className="flex flex-col gap-2 pt-1">
               <button
-                onClick={handleDownloadQR}
+                onClick={handleDownloadPersonalQr}
                 style={{ backgroundColor: accent }}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold text-white shadow hover:opacity-90 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 rounded-xl text-xs font-bold text-white shadow hover:opacity-90 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                <span>Download QR Code</span>
+                <span>{t.downloadPersonalQr}</span>
               </button>
 
               <button
