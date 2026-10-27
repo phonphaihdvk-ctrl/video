@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StoredVideo } from '../types/video';
 
 export interface VideoPlayerModalProps {
@@ -15,6 +15,24 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   video,
   onClose,
 }) => {
+  // Prevent background scroll when video modal is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
   if (!videoId && !video) return null;
 
   // Resolve video ID from prop or video object
@@ -34,7 +52,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black w-screen h-screen overflow-hidden">
-      {/* Top-Right Close Button (✕) */}
+      {/* Top-Right Close Button (✕) Only */}
       <button
         type="button"
         onClick={onClose}
