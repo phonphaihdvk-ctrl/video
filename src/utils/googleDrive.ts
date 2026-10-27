@@ -1,31 +1,22 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  User,
-  signOut,
-} from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
+/**
+ * Direct Google Identity Services (GIS) & Google Drive API v3 Integration
+ * Completely independent of Firebase - Works seamlessly on Netlify & custom domains
+ */
 
-// Initialize Firebase App
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-
-const createProvider = (forceConsent = false) => {
-  const p = new GoogleAuthProvider();
-  p.addScope('https://www.googleapis.com/auth/drive.readonly');
-  p.addScope('https://www.googleapis.com/auth/drive.file');
-  p.setCustomParameters({
-    prompt: forceConsent ? 'consent select_account' : 'select_account',
-    access_type: 'offline',
-  });
-  return p;
-};
-
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = (typeof localStorage !== 'undefined' && localStorage.getItem('vault_access_token')) || null;
 let isSigningIn = false;
+
+export interface VaultUserSession {
+  email: string;
+  name?: string;
+  displayName?: string;
+  picture?: string;
+  photoURL?: string;
+  id?: string;
+}
+
+export type GoogleUserProfile = VaultUserSession;
+export type User = VaultUserSession;
 
 export interface DriveVideoFile {
   id: string;
@@ -87,72 +78,14 @@ export const getDriveCache = (email: string): DriveVideoFile[] => {
   return [];
 };
 
-export const initAuth = (
-  onAuthSuccess?: (user: User, token: string) => void,
-  onAuthFailure?: () => void
-) => {
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user && cachedAccessToken) {
-      if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-    } else if (!isSigningIn) {
-      if (onAuthFailure) onAuthFailure();
-    }
-  });
-};
-
-export const googleSignIn = async (
-  forceConsent = true
-): Promise<{ user: User; accessToken: string } | null> => {
-  try {
-    isSigningIn = true;
-    const provider = createProvider(forceConsent);
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('Failed to obtain Google access token');
-    }
-    cachedAccessToken = credential.accessToken;
-    return { user: result.user, accessToken: cachedAccessToken };
-  } catch (err: any) {
-    if (err.code === 'auth/popup-closed-by-user') {
-      return null;
-    }
-    console.warn('Google Sign In warning:', err.message || err);
-    throw err;
-  } finally {
-    isSigningIn = false;
-  }
-};
-
-export const googleSignOut = async (): Promise<void> => {
-  try {
-    await signOut(auth);
-  } catch (e) {
-    // ignore
-  }
-  cachedAccessToken = null;
-};
-
-export const getAccessToken = (): string | null => {
-  return cachedAccessToken;
-};
-
-export const setAccessTokenInMemory = (token: string | null) => {
-  cachedAccessToken = token;
-};
-
-export interface GoogleUserProfile {
-  email: string;
-  name: string;
-  picture?: string;
-  id?: string;
-}
+const DEFAULT_CLIENT_ID = '848158991191-pj2ua64aq6qhsfte9nvd3qqn7i8q5ag8.apps.googleusercontent.com';
+const DEFAULT_API_KEY = 'AIzaSyDG_jbtTO6fflFU45g7aaVLMxQTfPnHeDI';
 
 export const getGoogleClientId = (): string => {
   return (
     localStorage.getItem('vault_google_client_id') ||
     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID) ||
-    ''
+    DEFAULT_CLIENT_ID
   );
 };
 
@@ -160,7 +93,7 @@ export const getGoogleApiKey = (): string => {
   return (
     localStorage.getItem('vault_google_api_key') ||
     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_API_KEY) ||
-    ''
+    DEFAULT_API_KEY
   );
 };
 
@@ -173,69 +106,227 @@ export const setGoogleApiConfig = (clientId: string, apiKey: string) => {
 };
 
 /**
- * Google Identity Services (GIS) Token Client sign in
- * Obtains an access token with Google Drive and user profile scopes
+ * Ensures the Google Identity Services SDK script is loaded and ready
  */
-export const signInWithGIS = async (): Promise<{ profile: GoogleUserProfile; accessToken: string }> => {
+export const waitForGIS = async (timeoutMs = 5000): Promise<boolean> => {
+  if (typeof window === 'undefined') return false;
+  if ((window as any).google?.accounts?.oauth2) return true;
+
+  if (!document.querySelector('script[src*="accounts.google.com/gsi/client"]')) {
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if ((window as any).google?.accounts?.oauth2) {
+      return true;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return !!(window as any).google?.accounts?.oauth2;
+};
+
+/**
+ * Google Identity Services (GIS) Token Client sign in
+ * Direct OAuth2 flow with Google Drive readonly/file scopes & userinfo profile
+ */
+export const signInWithGIS = async (
+  promptType: '' | 'select_account' | 'consent' = 'select_account'
+): Promise<{ user: VaultUserSession; profile: VaultUserSession; accessToken: string }> => {
   const clientId = getGoogleClientId();
   if (!clientId) {
     throw new Error('MISSING_CLIENT_ID');
   }
 
-  if (typeof window === 'undefined' || !(window as any).google?.accounts?.oauth2) {
-    throw new Error('Google Identity Services SDK is loading. Please wait 2 seconds or check internet connection.');
+  const isLoaded = await waitForGIS(5000);
+  if (!isLoaded) {
+    throw new Error('Google Identity Services SDK is still loading. Please check your internet connection or retry.');
   }
 
   return new Promise((resolve, reject) => {
     try {
+      let isSettled = false;
+
       const client = (window as any).google.accounts.oauth2.initTokenClient({
         client_id: clientId,
         scope:
           'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+        error_callback: (err: any) => {
+          if (!isSettled) {
+            isSettled = true;
+            reject(new Error(err?.message || err?.error || 'Google Sign-In was cancelled or failed.'));
+          }
+        },
         callback: async (response: any) => {
+          if (isSettled) return;
           if (response.error) {
+            isSettled = true;
             reject(new Error(response.error_description || response.error));
             return;
           }
           if (!response.access_token) {
+            isSettled = true;
             reject(new Error('No access token returned from Google'));
             return;
           }
 
           const accessToken = response.access_token;
           cachedAccessToken = accessToken;
+          localStorage.setItem('vault_access_token', accessToken);
+          localStorage.setItem('vault_auth_active', 'true');
+
+          let userSession: VaultUserSession = {
+            email: 'user@gmail.com',
+            name: 'Google Vault User',
+            displayName: 'Google Vault User',
+            photoURL: '',
+            picture: '',
+          };
 
           try {
             const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
               headers: { Authorization: `Bearer ${accessToken}` },
             });
-            const profileData = await userRes.json();
-            resolve({
-              profile: {
-                email: profileData.email || 'user@gmail.com',
-                name: profileData.name || profileData.email?.split('@')[0] || 'Google User',
-                picture: profileData.picture,
+            if (userRes.ok) {
+              const profileData = await userRes.json();
+              const name = profileData.name || profileData.email?.split('@')[0] || 'Google User';
+              const email = profileData.email || 'user@gmail.com';
+              const pic = profileData.picture || '';
+              userSession = {
+                email,
+                name,
+                displayName: name,
+                picture: pic,
+                photoURL: pic,
                 id: profileData.sub,
-              },
-              accessToken,
-            });
+              };
+            }
           } catch (e) {
-            resolve({
-              profile: {
-                email: 'user@gmail.com',
-                name: 'Google User',
-              },
-              accessToken,
-            });
+            console.warn('Could not fetch user profile info:', e);
           }
+
+          localStorage.setItem('vault_user_email', userSession.email);
+          if (userSession.displayName) localStorage.setItem('vault_user_name', userSession.displayName);
+          if (userSession.photoURL) localStorage.setItem('vault_user_avatar', userSession.photoURL);
+
+          isSettled = true;
+          resolve({
+            user: userSession,
+            profile: userSession,
+            accessToken,
+          });
         },
       });
 
-      client.requestAccessToken({ prompt: 'consent' });
+      client.requestAccessToken({ prompt: promptType });
     } catch (err: any) {
       reject(err);
     }
   });
+};
+
+export const googleSignIn = async (
+  forceConsent = false
+): Promise<{ user: VaultUserSession; accessToken: string } | null> => {
+  try {
+    isSigningIn = true;
+    const res = await signInWithGIS(forceConsent ? 'consent' : 'select_account');
+    return { user: res.user, accessToken: res.accessToken };
+  } catch (err: any) {
+    if (err?.message?.includes('popup_closed') || err?.message?.includes('closed')) {
+      return null;
+    }
+    throw err;
+  } finally {
+    isSigningIn = false;
+  }
+};
+
+export const googleSignOut = async (): Promise<void> => {
+  const token = cachedAccessToken || (typeof localStorage !== 'undefined' && localStorage.getItem('vault_access_token'));
+  if (token && typeof window !== 'undefined' && (window as any).google?.accounts?.oauth2?.revoke) {
+    try {
+      (window as any).google.accounts.oauth2.revoke(token, () => {});
+    } catch (e) {}
+  }
+  cachedAccessToken = null;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('vault_access_token');
+    localStorage.removeItem('vault_auth_active');
+    localStorage.removeItem('vault_user_email');
+    localStorage.removeItem('vault_user_name');
+    localStorage.removeItem('vault_user_avatar');
+  }
+};
+
+export const initAuth = (
+  onAuthSuccess?: (user: VaultUserSession, token: string) => void,
+  onAuthFailure?: () => void
+) => {
+  if (typeof localStorage === 'undefined') return () => {};
+  const isActive = localStorage.getItem('vault_auth_active') === 'true';
+  const email = localStorage.getItem('vault_user_email');
+  const token = localStorage.getItem('vault_access_token') || cachedAccessToken;
+  const name = localStorage.getItem('vault_user_name') || email?.split('@')[0] || 'Vault User';
+  const avatar = localStorage.getItem('vault_user_avatar') || '';
+
+  if (isActive && email) {
+    const session: VaultUserSession = {
+      email,
+      name,
+      displayName: name,
+      photoURL: avatar,
+      picture: avatar,
+    };
+    if (token) {
+      cachedAccessToken = token;
+      if (onAuthSuccess) onAuthSuccess(session, token);
+    } else {
+      if (onAuthSuccess) onAuthSuccess(session, '');
+    }
+  } else {
+    if (onAuthFailure) onAuthFailure();
+  }
+  return () => {};
+};
+
+export const getAccessToken = (): string | null => {
+  return cachedAccessToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('vault_access_token') : null);
+};
+
+export const setAccessTokenInMemory = (token: string | null) => {
+  cachedAccessToken = token;
+  if (token && typeof localStorage !== 'undefined') {
+    localStorage.setItem('vault_access_token', token);
+  }
+};
+
+// Pure GIS auth placeholder to prevent any legacy errors
+export const auth = {
+  currentUser: null as VaultUserSession | null,
+  signOut: googleSignOut,
+  onAuthStateChanged: (cb: (user: VaultUserSession | null) => void) => {
+    const isActive = localStorage.getItem('vault_auth_active') === 'true';
+    const email = localStorage.getItem('vault_user_email');
+    if (isActive && email) {
+      const name = localStorage.getItem('vault_user_name') || email.split('@')[0] || 'Vault User';
+      const avatar = localStorage.getItem('vault_user_avatar') || '';
+      cb({
+        email,
+        name,
+        displayName: name,
+        photoURL: avatar,
+        picture: avatar,
+      });
+    } else {
+      cb(null);
+    }
+    return () => {};
+  },
 };
 
 /**

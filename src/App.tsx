@@ -18,8 +18,10 @@ import {
   getGoogleClientId,
   getGoogleApiKey,
   setGoogleApiConfig,
+  setAccessTokenInMemory,
+  VaultUserSession,
 } from './utils/googleDrive';
-import { User } from 'firebase/auth';
+
 
 export type Language = 'km' | 'en';
 
@@ -550,7 +552,7 @@ export default function App() {
   const [userEmail, setUserEmail] = useState<string>(() => {
     return localStorage.getItem('vault_user_email') || '';
   });
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<VaultUserSession | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   // Landing login form state
@@ -872,20 +874,37 @@ export default function App() {
     };
   }, [showQualityMenu]);
 
-  // Firebase auth state listener on app startup
+  // Google / Vault auth state restore on app startup (Direct GIS, Zero Firebase dependencies)
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
-      if (currentUser && localStorage.getItem('vault_auth_active') === 'true') {
-        setUser(currentUser);
-        setUserEmail(currentUser.email || '');
-        localStorage.setItem('vault_user_email', currentUser.email || '');
-        const cached = getDriveCache(currentUser.email || '');
-        if (cached && cached.length > 0) {
-          setMediaItems(cached);
-        }
+    const isActive = localStorage.getItem('vault_auth_active') === 'true';
+    const email = localStorage.getItem('vault_user_email') || '';
+    const storedToken = localStorage.getItem('vault_access_token');
+    const storedName = localStorage.getItem('vault_user_name') || (email ? email.split('@')[0] : 'Vault User');
+    const storedAvatar = localStorage.getItem('vault_user_avatar') || '';
+
+    if (isActive && email) {
+      const restoredUser: VaultUserSession = {
+        email,
+        displayName: storedName,
+        name: storedName,
+        photoURL: storedAvatar,
+        picture: storedAvatar,
+      };
+      setUser(restoredUser);
+      setUserEmail(email);
+      setIsAuthenticated(true);
+      if (storedToken) {
+        setAccessToken(storedToken);
+        setAccessTokenInMemory(storedToken);
       }
-    });
-    return () => unsubscribe();
+      const cached = getDriveCache(email);
+      if (cached && cached.length > 0) {
+        setMediaItems(cached);
+      }
+      if (storedToken) {
+        loadDriveVideos(storedToken, email).catch(() => {});
+      }
+    }
   }, []);
 
   // HTML5 Video Player listeners & volume sync
@@ -1057,74 +1076,33 @@ export default function App() {
     }, 1200);
   };
 
-  // Google Sign In handler (supports GIS Token Client & Firebase Popup fallback)
-  const handleGoogleSignIn = async (forceConsent = true) => {
+  // Google Sign In handler (Direct Google Identity Services - GIS, Zero Firebase dependencies)
+  const handleGoogleSignIn = async (forceConsent = false) => {
     setLoading(true);
     setStatusMessage(t.syncingDrive);
     setLoginError('');
 
-    const clientId = getGoogleClientId();
-
-    // 1. If custom Client ID is configured or GIS SDK is available with client ID, use GIS token client
-    if (clientId && typeof window !== 'undefined' && (window as any).google?.accounts?.oauth2) {
-      try {
-        const gisResult = await signInWithGIS();
-        if (gisResult) {
-          const email = gisResult.profile.email;
-          setUserEmail(email);
-          setAccessToken(gisResult.accessToken);
-          setIsAuthenticated(true);
-          localStorage.setItem('vault_auth_active', 'true');
-          localStorage.setItem('vault_user_email', email);
-
-          if (gisResult.profile.picture) {
-            setUserAvatar(gisResult.profile.picture);
-            localStorage.setItem('vault_user_avatar', gisResult.profile.picture);
-          }
-
-          // Register in user list
-          const currentEmail = email.toLowerCase();
-          setVaultUsers((prev) => {
-            const exists = prev.some((u) => u.email.toLowerCase() === currentEmail);
-            if (!exists) {
-              const isDev = currentEmail === DEVELOPER_ADMIN_EMAIL.toLowerCase();
-              return [
-                ...prev,
-                {
-                  email: email,
-                  name: gisResult.profile.name || 'Google User',
-                  status: isDev ? 'approved' : 'pending',
-                  role: isDev ? 'admin' : 'user',
-                  date: 'Just now',
-                },
-              ];
-            }
-            return prev;
-          });
-
-          await loadDriveVideos(gisResult.accessToken, email);
-          setStatusMessage(t.cloudConnected);
-          setTimeout(() => setStatusMessage(''), 4000);
-          setLoading(false);
-          return;
-        }
-      } catch (gisErr: any) {
-        console.warn('GIS sign in notice:', gisErr);
-      }
-    }
-
-    // 2. Firebase Google Sign-In Fallback (or if no custom client ID set yet)
     try {
-      const result = await googleSignIn(forceConsent);
-      if (result) {
-        setUser(result.user);
-        setUserEmail(result.user.email || '');
-        setAccessToken(result.accessToken);
+      const gisResult = await signInWithGIS(forceConsent ? 'consent' : 'select_account');
+      if (gisResult) {
+        const email = gisResult.user.email || 'user@gmail.com';
+        setUser(gisResult.user);
+        setUserEmail(email);
+        setAccessToken(gisResult.accessToken);
+        setAccessTokenInMemory(gisResult.accessToken);
         setIsAuthenticated(true);
         localStorage.setItem('vault_auth_active', 'true');
-        localStorage.setItem('vault_user_email', result.user.email || '');
+        localStorage.setItem('vault_user_email', email);
+        if (gisResult.user.displayName) {
+          localStorage.setItem('vault_user_name', gisResult.user.displayName);
+        }
+        if (gisResult.user.photoURL) {
+          setUserAvatar(gisResult.user.photoURL);
+          localStorage.setItem('vault_user_avatar', gisResult.user.photoURL);
+        }
 
-        const currentEmail = (result.user.email || '').toLowerCase();
+        // Register in user list
+        const currentEmail = email.toLowerCase();
         setVaultUsers((prev) => {
           const exists = prev.some((u) => u.email.toLowerCase() === currentEmail);
           if (!exists) {
@@ -1132,8 +1110,8 @@ export default function App() {
             return [
               ...prev,
               {
-                email: result.user.email || 'user@gmail.com',
-                name: result.user.displayName || 'Google Vault User',
+                email: email,
+                name: gisResult.user.displayName || 'Google User',
                 status: isDev ? 'approved' : 'pending',
                 role: isDev ? 'admin' : 'user',
                 date: 'Just now',
@@ -1143,19 +1121,20 @@ export default function App() {
           return prev;
         });
 
-        await loadDriveVideos(result.accessToken, result.user.email || '');
+        await loadDriveVideos(gisResult.accessToken, email);
         setStatusMessage(t.cloudConnected);
         setTimeout(() => setStatusMessage(''), 4000);
       }
     } catch (err: any) {
-      if (err?.code === 'auth/popup-closed-by-user') {
-        // user closed popup
-      } else if (err?.code === 'auth/unauthorized-domain') {
+      console.warn('Google Identity Services login error:', err);
+      if (err?.message === 'MISSING_CLIENT_ID') {
         setShowApiConfigModal(true);
-        setLoginError('Domain unauthorized for Firebase. Please configure your Google Client ID below for direct Google OAuth.');
+        setLoginError('Please configure your Google Client ID for direct Google OAuth on Netlify.');
+      } else if (err?.message?.includes('popup_closed') || err?.message?.includes('closed')) {
+        // user closed popup
       } else {
-        setLoginError('Google Sign-in was cancelled or encountered an error.');
-        setTimeout(() => setLoginError(''), 5000);
+        setLoginError(err?.message || 'Google Sign-in was cancelled or encountered an error.');
+        setTimeout(() => setLoginError(''), 6000);
       }
     } finally {
       setLoading(false);
@@ -2142,7 +2121,7 @@ export default function App() {
             {/* Primary Option: Google 1-Tap Login */}
             <div>
               <button
-                onClick={() => handleGoogleSignIn(true)}
+                onClick={() => handleGoogleSignIn(false)}
                 disabled={loading}
                 className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold transition flex items-center justify-center gap-3 shadow-md active:scale-98 cursor-pointer"
               >
