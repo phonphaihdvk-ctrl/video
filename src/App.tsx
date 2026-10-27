@@ -717,6 +717,7 @@ export default function App() {
 
   // Clean Pure Custom Video Player States (Direct HTML5 Stream, Zero Drive iframes)
   const [playVideo, setPlayVideo] = useState<DriveVideoFile | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<DriveVideoFile | string | null>(null);
   const [activeStreamUrl, setActiveStreamUrl] = useState<string>('');
   const [videoStreamLoading, setVideoStreamLoading] = useState(false);
   const [videoStreamProgress, setVideoStreamProgress] = useState<{ loadedMB: string; percent: number }>({
@@ -2262,6 +2263,7 @@ export default function App() {
   }, [availableQualities, videoQuality]);
 
   const handleOpenVideo = (video: DriveVideoFile) => {
+    setSelectedVideo(video);
     setPlayVideo(video);
   };
 
@@ -3580,13 +3582,32 @@ export default function App() {
         </div>
       )}
 
-      {/* Video Modal Component: Pure Google Drive Iframe & Top-Right Close Button */}
-      {playVideo && (
-        <VideoPlayerModal
-          videoId={playVideo.driveId || playVideo.id}
-          video={playVideo as any}
-          onClose={() => setPlayVideo(null)}
-        />
+      {/* --- VIDEO MODAL ស្អាត ១០០% គ្មានប៊ូតុងបាំង --- */}
+      {(selectedVideo || playVideo) && (
+        <div className="fixed inset-0 z-[99999] bg-black w-screen h-[100dvh] flex items-center justify-center p-0 m-0 overflow-hidden">
+          {/* ប៊ូតុងបិទ ✕ មួយគត់នៅជ្រុងខាងស្ដាំលើ */}
+          <button
+            onClick={() => {
+              setSelectedVideo(null);
+              setPlayVideo(null);
+            }}
+            className="absolute top-4 right-4 z-50 w-11 h-11 flex items-center justify-center rounded-full bg-black/70 text-white border border-white/20 hover:bg-black text-xl cursor-pointer"
+          >
+            ✕
+          </button>
+
+          {/* ផ្ទាំងចាក់វីដេអូ Drive ដើមពេញអេក្រង់ទូរស័ព្ទ */}
+          <iframe
+            src={`https://drive.google.com/file/d/${
+              typeof (selectedVideo || playVideo) === "string"
+                ? (selectedVideo || playVideo)
+                : ((selectedVideo || playVideo) as any)?.driveId || ((selectedVideo || playVideo) as any)?.id || ""
+            }/preview`}
+            className="w-full h-full border-0 pointer-events-auto"
+            allow="autoplay; fullscreen; encrypted-media"
+            allowFullScreen
+          />
+        </div>
       )}
 
       {folderModal.open && (
