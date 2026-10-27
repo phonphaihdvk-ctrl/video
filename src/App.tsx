@@ -27,6 +27,7 @@ import {
   decodeQrFromImageFile,
   scanVideoFrameForQr,
 } from './utils/qrHelper';
+import { VideoPlayerModal } from './components/VideoPlayerModal';
 
 export type Language = 'km' | 'en';
 
@@ -3579,45 +3580,13 @@ export default function App() {
         </div>
       )}
 
-      {/* Clean Full-Bleed Video Modal Layout with Instant Native Play Button */}
+      {/* Video Modal Component: Pure Google Drive Iframe & Top-Right Close Button */}
       {playVideo && (
-        <div
-          className="fixed inset-0 z-[9999] bg-black w-screen h-[100dvh] flex items-center justify-center m-0 p-0 overflow-hidden animate-in fade-in duration-200"
-        >
-          {/* ONLY ONE minimal floating Close button (✕) at the top-right corner */}
-          <button
-            type="button"
-            onClick={() => setPlayVideo(null)}
-            className="absolute top-3 right-3 z-50 p-2 sm:p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition cursor-pointer active:scale-95 border border-white/20 shadow-lg"
-            title="Close Player"
-            aria-label="Close Player"
-          >
-            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* Pure Native Mobile Video Display: Direct Tap Interaction & Landscape Auto-Fit */}
-          <div className="w-full h-full flex items-center justify-center p-0 m-0 bg-black">
-            {playVideo.id.startsWith('demo_') || playVideo.id.startsWith('local_') ? (
-              <video
-                src={playVideo.url}
-                controls
-                autoPlay
-                playsInline
-                className="w-full h-full max-w-full max-h-full object-contain bg-black pointer-events-auto"
-              />
-            ) : (
-              <iframe
-                src={`https://drive.google.com/file/d/${playVideo.driveId || playVideo.id}/preview`}
-                className="w-full h-full border-0 pointer-events-auto"
-                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                allowFullScreen
-                title={playVideo.name}
-              />
-            )}
-          </div>
-        </div>
+        <VideoPlayerModal
+          videoId={playVideo.driveId || playVideo.id}
+          video={playVideo as any}
+          onClose={() => setPlayVideo(null)}
+        />
       )}
 
       {folderModal.open && (
