@@ -3259,28 +3259,29 @@ export default function App() {
         </div>
       )}
 
-      {/* Clean Minimalist Video Player Modal (Google Drive Pure Native Embed Player) */}
+      {/* Clean Full-Bleed Video Modal Layout (Pure Google Drive Native Embed Player - Zero Bottom Controls) */}
       {playVideo && (
         <div
-          className="fixed inset-0 z-50 bg-black flex flex-col animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black flex flex-col justify-between animate-in fade-in duration-200"
           onClick={() => setPlayVideo(null)}
         >
-          {/* Top Bar: Minimalist header with video title, Pop-out Full Window button (↗), and Close button (✕) */}
+          {/* Minimalist Top Bar: Slim, semi-transparent, and floating at the top */}
           <div
-            className="flex items-center justify-between px-4 py-2.5 sm:py-3 bg-slate-950/95 border-b border-slate-800 shrink-0 z-20"
+            className="w-full px-4 py-2.5 sm:py-3 bg-black/60 backdrop-blur-md border-b border-white/10 flex items-center justify-between shrink-0 z-20"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="truncate max-w-[70%] sm:max-w-[80%]">
+            {/* Left: Video file name and size */}
+            <div className="truncate max-w-[65%] sm:max-w-[75%]">
               <h3 className="text-xs sm:text-sm font-semibold truncate text-white drop-shadow">
                 {playVideo.name}
               </h3>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {playVideo.size} • {playVideo.category || 'General'}
+              <span className="text-[10px] sm:text-xs text-slate-400 font-mono">
+                {playVideo.size}
               </span>
             </div>
 
+            {/* Right: Direct Pop-out button (↗) linking to Google Drive view with target="_blank" and Close button (✕) */}
             <div className="flex items-center gap-2 shrink-0">
-              {/* Pop-out Full Window button (↗) linking to Google Drive view */}
               <a
                 href={
                   playVideo.driveId || (!playVideo.id.startsWith('demo_') && !playVideo.id.startsWith('local_'))
@@ -3289,21 +3290,18 @@ export default function App() {
                 }
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-mono transition cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-mono transition cursor-pointer border border-white/10 active:scale-95"
                 title={lang === 'km' ? 'បើកផ្ទាំងពេញក្នុង Google Drive (↗)' : 'Pop-out Full Window (↗)'}
                 aria-label="Pop-out Full Window"
               >
-                <span className="hidden sm:inline text-[11px]">Drive</span>
-                <svg className="w-3.5 h-3.5 fill-none stroke-currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
+                <span className="text-sm font-bold leading-none">↗</span>
+                <span className="hidden sm:inline text-[11px] font-sans">Drive</span>
               </a>
 
-              {/* Close button (✕) */}
               <button
                 type="button"
                 onClick={() => setPlayVideo(null)}
-                className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer shrink-0"
+                className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer shrink-0 border border-white/10 active:scale-95"
                 title="Close Player"
                 aria-label="Close Player"
               >
@@ -3314,9 +3312,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* Full viewport size Google Drive Native Embed iframe (zero padding, native controls fully unclipped) */}
+          {/* Full available screen Google Drive Native Embed iframe (Zero custom bottom controls) */}
           <div
-            className="flex-1 w-full h-full bg-black relative flex items-center justify-center overflow-hidden"
+            className="w-full flex-1 relative flex items-center justify-center overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {playVideo.id.startsWith('demo_') || playVideo.id.startsWith('local_') ? (
@@ -3330,7 +3328,7 @@ export default function App() {
             ) : (
               <iframe
                 src={`https://drive.google.com/file/d/${playVideo.driveId || playVideo.id}/preview`}
-                className="w-full h-full border-0 bg-black"
+                className="w-full h-full border-0"
                 allow="autoplay; fullscreen"
                 allowFullScreen
                 title={playVideo.name}
