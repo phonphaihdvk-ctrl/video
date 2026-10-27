@@ -27,6 +27,7 @@ import {
   decodeQrFromImageFile,
   scanVideoFrameForQr,
 } from './utils/qrHelper';
+import { VideoModal } from './components/VideoModal';
 import { VideoPlayerModal } from './components/VideoPlayerModal';
 
 export type Language = 'km' | 'en';
@@ -3582,33 +3583,20 @@ export default function App() {
         </div>
       )}
 
-      {/* --- VIDEO MODAL ស្អាត ១០០% គ្មានប៊ូតុងបាំង --- */}
+      {/* --- VIDEO MODAL: 3S AUTO-HIDE & FULL LANDSCAPE FIT --- */}
       {(selectedVideo || playVideo) && (
-        <div className="fixed inset-0 z-[99999] bg-black w-screen h-[100dvh] flex items-center justify-center p-0 m-0 overflow-hidden">
-          {/* ប៊ូតុងបិទ ✕ មួយគត់ */}
-          <button
-            onClick={() => {
-              setSelectedVideo(null);
-              setPlayVideo(null);
-            }}
-            aria-label="Close"
-            className="absolute top-4 right-4 z-50 p-3 rounded-full bg-black/70 text-white border border-white/20 text-xl cursor-pointer"
-          >
-            ✕
-          </button>
-
-          {/* ទុកតែ Iframe Drive សុទ្ធ ១០០% (ព្រោះវាចាក់វីដេអូដើរស្រាប់ហើយ) */}
-          <iframe
-            src={`https://drive.google.com/file/d/${
-              typeof (selectedVideo || playVideo) === "string"
-                ? (selectedVideo || playVideo)
-                : ((selectedVideo || playVideo) as any)?.driveId || ((selectedVideo || playVideo) as any)?.id || ""
-            }/preview`}
-            className="w-full h-full border-0 pointer-events-auto"
-            allow="autoplay; fullscreen; encrypted-media"
-            allowFullScreen
-          />
-        </div>
+        <VideoModal
+          videoId={
+            typeof (selectedVideo || playVideo) === "string"
+              ? (selectedVideo || playVideo)
+              : ((selectedVideo || playVideo) as any)?.driveId || ((selectedVideo || playVideo) as any)?.id || ""
+          }
+          videoUrl={((selectedVideo || playVideo) as any)?.url || ""}
+          onClose={() => {
+            setSelectedVideo(null);
+            setPlayVideo(null);
+          }}
+        />
       )}
 
       {folderModal.open && (
